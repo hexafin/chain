@@ -1,0 +1,86 @@
+{
+  "indexes": [
+    // transaction index for searching based on sender and recipient
+    {
+      "collectionId": "transactions",
+      "fields": [
+        {
+          "fieldPath": "from_user"
+        },
+        {
+          "fieldPath": "to_user"
+        },
+        {
+          "fieldPath": "timestamp",
+          "mode": "DESCENDING"
+        }
+      ]
+    },
+    // person index for finding a user
+    {
+      "collectionId": "people",
+      "fields": [
+        {
+          "fieldPath": "first_name"
+        },
+        {
+          "fieldPath": "last_name"
+        },
+        {
+          "fieldPath": "username"
+        },
+        {
+          "fieldPath": "email"
+        },
+        {
+          "fieldPath": "crypto.btc"
+        },
+        {
+          "fieldPath": "crypto.eth"
+        },
+        {
+          "fieldPath": "crypto.ltc"
+        },
+        {
+          "fieldPath": "crypto.bch"
+        }
+      ]
+    },
+    // person indexing for finding a user based only on bitcoin address
+    {
+      "collectionId": "people",
+      "fields": [
+        {
+          "fieldPath": "crypto.btc"
+        }
+      ]
+    },
+    // person indexing for finding a user based only on bitcoin cash address
+    {
+      "collectionId": "people",
+      "fields": [
+        {
+          "fieldPath": "crypto.bch"
+        }
+      ]
+    },
+    // person indexing for finding a user based only on ethereum address
+    {
+      "collectionId": "people",
+      "fields": [
+        {
+          "fieldPath": "crypto.eth"
+        }
+      ]
+    },
+    // person indexing for finding a user based only on litecoin address
+    {
+      "collectionId": "people",
+      "fields": [
+        {
+          "fieldPath": "crypto.ltc"
+        }
+      ]
+    }
+  ]
+}
