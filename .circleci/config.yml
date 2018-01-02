@@ -7,7 +7,6 @@ jobs:
     steps:
       - checkout
       - run: yarn
-      - run: yarn run test
       - run: firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET
               coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT
               coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
@@ -15,8 +14,6 @@ jobs:
           root: ~/project
           paths:
             - node_modules
-      - store_test_results:
-          path: ~/project/junit.xml
 
   master:
     working_directory: ~/project
