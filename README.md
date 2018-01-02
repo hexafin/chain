@@ -9,11 +9,13 @@
 - `email`
 - `phone_number`
 - `crypto`
-    - object with crypto's code as property and the cryptocurrency address as the value
-    - eg. {"btc": BITCOIN_ADDRESS}
+    - object with crypto's code as property and an object with the crypto's address and balance as the value
+    - eg. {"BTC": {"address": BITCOIN_ADDRESS, "balance": BITCOIN_BALANCE}}
 - `facebook_id`
 - `coinbase_id`
     - *not defined unless coinbase is linked*
+- `default_currency`
+    - code of default currency
 - `picture_url`
     - **do we need this if we are using the graph API?**
 - `address`
@@ -36,7 +38,7 @@
     - get person's approval for transaction
 - GetPersonFromCrypto
     - get details of person based on input crypto object
-    - eg. {"btc": TARGET_BITCOIN_ADDRESS} => public_target_person
+    - eg. {"BTC": TARGET_BITCOIN_ADDRESS} => public_target_person
     
     
 
@@ -55,11 +57,15 @@
     - phone number on file
 - `crypto`
     - object with crypto's code as property and the cryptocurrency address as the value
-    - eg. {"btc": BITCOIN_ADDRESS}
+    - eg. {"BTC": BITCOIN_ADDRESS}
+- `default_currency`
 - `description`
 - `facebook_page_id`
+    - *not defined unless facebook is linked*
 - `linkedin_page_id`
+    - *not defined unless linkedin is linked*
 - `amazon_seller_id`
+    - *not defined unless amazon is linked*
 - `coinbase_id`
     - *not defined unless coinbase is linked*
 - `picture_url`
@@ -98,24 +104,31 @@ all transactions in the transactions collection are final (requests are not fina
     - values
         - `friend`
         - `merchant`
+        - `coinbase`
 - `from_id`
 - `to_id`
-- `fiat`
+- `relative_currency`
     - values
-        - `usd`
-        - `eur`
-- `amount_fiat`
+        - `USD`
+        - `EUR`
+- `relative_amount`
     - numerical value
     - eg. `100.00`
-- `crypto`
+- `currency`
     - values
-        - `btc`
-        - `eth`
-- `amount_crypto`
+        - `BTC`
+        - `BCH`
+        - `LTC`
+        - `ETH`
+- `amount`
     - numerical value
     - bitcoin is denoted in Satoshis (smallest fraction of bitcoin)
     - **note:** this value is not set until the transaction is completed, so the acceptor does not subject themselves to 
     price fluctuations in the event of a request
+- `fee`
+    - object describing fee
+    - `currency`
+    - `amount`
 - `category`
 - `memo`
 - `timestamp_initiated`
@@ -126,7 +139,7 @@ all transactions in the transactions collection are final (requests are not fina
 ### rules
 
 - read: if authenticated as from_id or to_id
-- write: if authenticated as from_id
+- write: if authenticated as from_id and authenticated user has crypto_balance >= transaction.crypto_amount + transaction.crypto_fee
 
 ### cloud functions
 
@@ -150,31 +163,27 @@ all transactions in the transactions collection are final (requests are not fina
 - `declined`
     - boolean
 - `number_of_reminders`
-- `fiat_or_crypto`
-    - what type of currency the request is denominated in
+- `relative_currency`
     - values
-        - `fiat`
-        - `crypto`
-- `fiat`
-    - *only defined if fiat_or_crypto == "fiat"*
+        - `USD`
+        - `EUR`
+- `relative_amount`
+    - numerical value
+    - eg. `100.00`
+- `currency`
     - values
-        - `usd`
-        - `eur`
-- `amount_fiat`
-    - *only defined if fiat_or_crypto == "fiat"*
+        - `BTC`
+        - `BCH`
+        - `LTC`
+        - `ETH`
+- `amount`
+    - *only defined if relative_currency == currency*
     - float
     - eg. `100.00`
-- `crypto`
-    - *only defined if fiat_or_crypto == "crypto"*
-    - values
-        - `btc`
-        - `bch`
-        - `eth`
-        - `ltc`
-- `amount_crypto`
-    - *only defined if fiat_or_crypto == "crypto"*
-    - float
-    - eg. `100.00`
+- `fee`
+    - object describing fee
+    - `currency`
+    - `amount`
 - `category`
 - `memo`
 - `timestamp_initiated`

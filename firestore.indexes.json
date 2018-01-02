@@ -33,16 +33,16 @@
           "fieldPath": "email"
         },
         {
-          "fieldPath": "crypto.btc"
+          "fieldPath": "crypto.btc.address"
         },
         {
-          "fieldPath": "crypto.eth"
+          "fieldPath": "crypto.eth.address"
         },
         {
-          "fieldPath": "crypto.ltc"
+          "fieldPath": "crypto.ltc.address"
         },
         {
-          "fieldPath": "crypto.bch"
+          "fieldPath": "crypto.bch.address"
         }
       ]
     },
@@ -51,7 +51,7 @@
       "collectionId": "people",
       "fields": [
         {
-          "fieldPath": "crypto.btc"
+          "fieldPath": "crypto.btc.address"
         }
       ]
     },
@@ -60,7 +60,7 @@
       "collectionId": "people",
       "fields": [
         {
-          "fieldPath": "crypto.bch"
+          "fieldPath": "crypto.bch.address"
         }
       ]
     },
@@ -69,7 +69,7 @@
       "collectionId": "people",
       "fields": [
         {
-          "fieldPath": "crypto.eth"
+          "fieldPath": "crypto.eth.address"
         }
       ]
     },
@@ -78,7 +78,7 @@
       "collectionId": "people",
       "fields": [
         {
-          "fieldPath": "crypto.ltc"
+          "fieldPath": "crypto.ltc.address"
         }
       ]
     }
