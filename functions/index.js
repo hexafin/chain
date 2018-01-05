@@ -127,7 +127,9 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
             slack("chain:newTransaction:updateBalance:positiveBalance:failure", error.toString)
             return
         }
-        firestore.collection("people").doc(from_id).update(updateObj)
+        firestore.collection("people").doc(from_id).update(updateObj).catch(error => {
+            slack("chain:newTransaction:updateBalance:updateFromPerson:failure", error.toString)
+        })
     }).catch(error => {
         slack("chain:newTransaction:updateBalance:getFromPerson:failure", error.toString)
     })
@@ -140,7 +142,9 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
 
         const updateObj = {}
         updateObj[balanceRef] = oldBalance + amount
-        firestore.collection("people").doc(to_id).update(updateObj)
+        firestore.collection("people").doc(to_id).update(updateObj).catch(error => {
+            slack("chain:newTransaction:updateBalance:updateToPerson:failure", error.toString)
+        })
     }).catch(error => {
         slack("chain:newTransaction:updateBalance:getToPerson:failure", error.toString)
     })
