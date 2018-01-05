@@ -14,6 +14,7 @@
 - `facebook_id`
 - `coinbase_id`
     - *not defined unless coinbase is linked*
+- `coinbase_info`
 - `default_currency`
     - code of default currency
 - `picture_url`
@@ -131,6 +132,7 @@ all transactions in the transactions collection are final (requests are not fina
     - `amount`
 - `category`
 - `memo`
+- `emoji`
 - `timestamp_initiated`
 - `timestamp_completed`
 - `timestamp_declined`
