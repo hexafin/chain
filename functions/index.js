@@ -2,6 +2,7 @@ const functions = require('firebase-functions')
 const admin = require("firebase-admin")
 let firestore = admin.firestore()
 let axios = require("axios")
+let Chance = require("chance")
 
 const coinbaseClient = require('coinbase').Client;
 
@@ -46,6 +47,7 @@ exports.coinbase = functions.https.onRequest((request, response) => {
         const address = request.params.data.address
         const amount = request.params.data.additional_data.amount.amount
         const currency = request.params.additional_data.amount.currency
+        const tx = request.params.additional_data.hash
         const coinbaseTransactionId = request.params.additional_data.transaction.id
         const timestampCoinbaseCreated = Math.floor(Date.parse(request.params.created_at) / 1000)
 
@@ -71,6 +73,7 @@ exports.coinbase = functions.https.onRequest((request, response) => {
                     amount: amount,
                     relative_currency: defaultCurrency,
                     relative_amount: exchangeRate*amount,
+                    tx: tx,
                     fee: {
                         currency: "BTC",
                         amount: 0 // no fee when moving money in from coinbase
@@ -153,7 +156,49 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
 
     // TODO: send notification to recipient
 
-    // TODO: if transaction is out-of-network, initiate a transaction from coinbase
+    // if transaction is out-of-network, initiate a transaction from coinbase
+    if (event.data.data().type == "external") {
+
+        const currency = event.data.data().currency
+        const toAddress = event.data.data().to_address
+        const amount = event.data.data().amount
+
+        // get coinbase account for given crypto
+        coinbase.getAccount(functions.config().coinbase[currency], (error, account) => {
+
+            // check error
+            if (error) {
+                slack("chain:newTransaction:external:coinbase:getAccount:failure", error.toString)
+                return
+            }
+
+            var chance = new Chance()
+
+            // generate new address
+            account.sendMoney({
+                to: toAddress,
+                amount: amount,
+                currency: currency,
+                idem: chance.string()
+            }, (error, tx) => {
+
+                // check error
+                if (error) {
+                    slack("chain:newTransaction:external:coinbase:sendMoney:failure", error.toString)
+                    return
+                }
+
+                // update transaction entity with tx
+                event.data.ref.update({
+                    tx: tx
+                }).catch(error => {
+                    slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
+                })
+
+            })
+
+        })
+    }
 
 })
 
@@ -168,8 +213,18 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onWrit
         // get coinbase account for given crypto
         coinbase.getAccount(functions.config().coinbase[crypto], (error, account) => {
 
+            if (error) {
+                slack("chain:newPerson:coinbase:getAccount:failure", error.toString)
+                return
+            }
+
             // generate new address
             account.createAddress(null, (error, address) => {
+
+                if (error) {
+                    slack("chain:newPerson:coinbase:createAddress:failure", error.toString)
+                    return
+                }
 
                 const cryptoRef = "crypto."+crypto
 
@@ -179,7 +234,9 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onWrit
                     "address": address,
                     "balance": 0
                 }
-                firestore.collection("people").doc(event.params.personId).update(updateObj)
+                event.data.ref.update(updateObj).catch(error => {
+                    slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
+                })
 
             })
 
