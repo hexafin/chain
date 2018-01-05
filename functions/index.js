@@ -109,6 +109,42 @@ exports.coinbase = functions.https.onRequest((request, response) => {
 // function called on each new transaction pushed to chain
 exports.hexaNewTransaction = functions.firestore.document("transactions/{transaction_id}").onWrite(event => {
 
+    const amount = event.data.data().amount
+    const from_id = event.data.data().from_id
+    const to_id = event.data.data().to_id
+    const currency = event.data.data().currency
+
+    // update balances
+    firestore.collection("people").doc(from_id).get().then(person => {
+
+        const balanceRef = "crypto."+currency
+
+        const oldBalance = person.data().crypto[currency].balance
+
+        const updateObj = {}
+        updateObj[balanceRef] = oldBalance - amount
+        if (oldBalance - amount < 0) {
+            slack("chain:newTransaction:updateBalance:positiveBalance:failure", error.toString)
+            return
+        }
+        firestore.collection("people").doc(from_id).update(updateObj)
+    }).catch(error => {
+        slack("chain:newTransaction:updateBalance:getFromPerson:failure", error.toString)
+    })
+
+    firestore.collection("people").doc(to_id).get().then(person => {
+
+        const balanceRef = "crypto."+currency
+
+        const oldBalance = person.data().crypto[currency].balance
+
+        const updateObj = {}
+        updateObj[balanceRef] = oldBalance + amount
+        firestore.collection("people").doc(to_id).update(updateObj)
+    }).catch(error => {
+        slack("chain:newTransaction:updateBalance:getToPerson:failure", error.toString)
+    })
+
     // TODO: send notification to sender
 
     // TODO: send notification to recipient
