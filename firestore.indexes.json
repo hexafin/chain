@@ -81,6 +81,15 @@
           "fieldPath": "crypto.LTC.address"
         }
       ]
+    },
+    // person indexing for finding a user based only on facebook id
+    {
+      "collectionId": "people",
+      "fields": [
+        {
+          "fieldPath": "facebook_id"
+        }
+      ]
     }
   ]
 }
