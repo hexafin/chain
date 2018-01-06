@@ -2,7 +2,6 @@ const functions = require('firebase-functions')
 const admin = require("firebase-admin")
 let firestore = admin.firestore()
 let axios = require("axios")
-let Chance = require("chance")
 
 const coinbaseClient = require('coinbase').Client;
 
@@ -172,14 +171,12 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                 return
             }
 
-            var chance = new Chance()
-
             // generate new address
             account.sendMoney({
                 to: toAddress,
                 amount: amount,
                 currency: currency,
-                idem: chance.string()
+                idem: event.data.id
             }, (error, tx) => {
 
                 // check error

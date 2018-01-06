@@ -7,9 +7,7 @@ jobs:
     steps:
       - checkout
       - run: yarn
-      - run: firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET
-              coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT
-              coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
+      - run: firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
       - persist_to_workspace:
           root: ~/project
           paths:
