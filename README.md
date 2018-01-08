@@ -40,8 +40,8 @@
 - GetPersonFromCrypto
     - get details of person based on input crypto object
     - eg. {"BTC": TARGET_BITCOIN_ADDRESS} => public_target_person
-    
-    
+
+
 
 ## merchants
 
@@ -124,7 +124,7 @@ all transactions in the transactions collection are final (requests are not fina
 - `amount`
     - numerical value
     - bitcoin is denoted in Satoshis (smallest fraction of bitcoin)
-    - **note:** this value is not set until the transaction is completed, so the acceptor does not subject themselves to 
+    - **note:** this value is not set until the transaction is completed, so the acceptor does not subject themselves to
     price fluctuations in the event of a request
 - `fee`
     - object describing fee
@@ -196,4 +196,4 @@ all transactions in the transactions collection are final (requests are not fina
 ### rules
 
 - read: if authenticated as from_id or to_id
-- write: if authenticated as from_id
+- write: if authenticated as to_id
