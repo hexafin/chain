@@ -19,10 +19,10 @@ service cloud.firestore {
     }
 
     // request data
-    match /transactions/{transaction_id} {
+    match /requests/{request_id} {
       allow read: if request.auth.uid == resource.data.from_id ||
                         request.auth.uid == resource.data.to_id
-      allow write: if request.auth.uid == resource.data.from_id
+      allow write: if request.auth.uid == resource.data.to_id
     }
 
   }
