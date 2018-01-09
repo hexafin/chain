@@ -12,17 +12,17 @@ service cloud.firestore {
     // transactions
     match /transactions/{transaction_id} {
       allow read: if request.auth.uid == resource.data.from_id ||
-                        request.auth.uid == resource.data.to_id
-      allow write: if request.auth.uid == resource.data.from_id &&
-                        get(/people/$(request.auth.uid)).data.crypto[resource.data.crypto].balance >=
-                         resource.data.amount_crypto + resource.data.fee.amount
+                        request.auth.uid == resource.data.to_id;
+      allow write: if request.auth.uid == request.resource.data.from_id &&
+                        get(/databases/$(database)/documents/people/$(request.auth.uid)).data.crypto[request.resource.data.currency].balance >
+                        (request.resource.data.amount + request.resource.data.fee.amount);
     }
 
     // request data
     match /requests/{request_id} {
       allow read: if request.auth.uid == resource.data.from_id ||
-                        request.auth.uid == resource.data.to_id
-      allow write: if request.auth.uid == resource.data.to_id
+                        request.auth.uid == resource.data.to_id;
+      allow write: if request.auth.uid == request.resource.data.to_id;
     }
 
   }
