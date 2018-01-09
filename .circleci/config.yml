@@ -27,7 +27,7 @@ jobs:
       # Not using a workspace here as Node and Yarn versions
       # differ between the macOS image and the Docker containers above.
       - run: yarn
-      - run: firebase deploy --token=$FIREBASE_DEPLOY_TOKEN
+      - run: firebase deploy --token $FIREBASE_TOKEN --non-interactive
 
 
 workflows:

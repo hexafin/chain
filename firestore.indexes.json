@@ -5,13 +5,15 @@
       "collectionId": "transactions",
       "fields": [
         {
-          "fieldPath": "from_user"
+          "fieldPath": "from_user",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "to_user"
+          "fieldPath": "to_user",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "timestamp",
+          "fieldPath": "timestamp_initiated",
           "mode": "DESCENDING"
         }
       ]
@@ -21,73 +23,36 @@
       "collectionId": "people",
       "fields": [
         {
-          "fieldPath": "first_name"
+          "fieldPath": "first_name",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "last_name"
+          "fieldPath": "last_name",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "username"
+          "fieldPath": "username",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "email"
+          "fieldPath": "email",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "crypto.BTC.address"
+          "fieldPath": "crypto.BTC.address",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "crypto.ETH.address"
+          "fieldPath": "crypto.ETH.address",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "crypto.LTC.address"
+          "fieldPath": "crypto.LTC.address",
+          "mode": "DESCENDING"
         },
         {
-          "fieldPath": "crypto.BCH.address"
-        }
-      ]
-    },
-    // person indexing for finding a user based only on bitcoin address
-    {
-      "collectionId": "people",
-      "fields": [
-        {
-          "fieldPath": "crypto.BTC.address"
-        }
-      ]
-    },
-    // person indexing for finding a user based only on bitcoin cash address
-    {
-      "collectionId": "people",
-      "fields": [
-        {
-          "fieldPath": "crypto.BCH.address"
-        }
-      ]
-    },
-    // person indexing for finding a user based only on ethereum address
-    {
-      "collectionId": "people",
-      "fields": [
-        {
-          "fieldPath": "crypto.ETH.address"
-        }
-      ]
-    },
-    // person indexing for finding a user based only on litecoin address
-    {
-      "collectionId": "people",
-      "fields": [
-        {
-          "fieldPath": "crypto.LTC.address"
-        }
-      ]
-    },
-    // person indexing for finding a user based only on facebook id
-    {
-      "collectionId": "people",
-      "fields": [
-        {
-          "fieldPath": "facebook_id"
+          "fieldPath": "crypto.BCH.address",
+          "mode": "DESCENDING"
         }
       ]
     }

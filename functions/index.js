@@ -1,11 +1,14 @@
-const functions = require('firebase-functions')
-const admin = require("firebase-admin")
-let firestore = admin.firestore()
 let axios = require("axios")
 
-const coinbaseClient = require('coinbase').Client;
+const functions = require('firebase-functions')
+const admin = require("firebase-admin")
 
-const coinbase = new coinbaseClient({
+admin.initializeApp(functions.config().firebase);
+let firestore = admin.firestore()
+
+const CoinbaseClient = require('coinbase').Client;
+
+const coinbase = new CoinbaseClient({
     'apiKey': functions.config().coinbase.key,
     'apiSecret': functions.config().coinbase.secret
 });
@@ -20,11 +23,10 @@ const coinbase = new coinbaseClient({
  * **/
 const slack = (title, subtitle=null, content) => {
     // write slack post
-    if (subtitle == null) {
-        const text = "**"+title+"**"+" | "+content
-    }
-    else {
-        const text = "**"+title+"**"+" | "+subtitle+" | "+content
+    let text = "**"+title+"**"+" | "+content
+
+    if (subtitle != null) {
+        text = "**"+title+"**"+" | "+subtitle+" | "+content
     }
     // POST to slack webhook
     axios.post(functions.config().slack.url, {text: text}).then(response => {
@@ -171,6 +173,8 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                 return
             }
 
+            // TODO: check if account has enough money to send
+
             // generate new address
             account.sendMoney({
                 to: toAddress,
@@ -205,7 +209,9 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onWrit
     // create a new btc, bch, eth, ltc address for each person
     const cryptos = ["BTC", "BCH", "ETH", "LTC"]
 
-    cryptos.forEach((crypto) => {
+    cryptos.forEach(crypto => {
+
+        console.log(crypto, functions.config().coinbase[crypto], coinbase)
 
         // get coinbase account for given crypto
         coinbase.getAccount(functions.config().coinbase[crypto], (error, account) => {
@@ -231,6 +237,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onWrit
                     "address": address,
                     "balance": 0
                 }
+                console.log(updateObj)
                 event.data.ref.update(updateObj).catch(error => {
                     slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
                 })
