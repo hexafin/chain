@@ -175,7 +175,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
 
             // TODO: check if account has enough money to send
 
-            // generate new address
+            // send money to external address
             account.sendMoney({
                 to: toAddress,
                 amount: amount,
@@ -204,42 +204,57 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
 })
 
 // function called each new person
-exports.hexaNewPerson = functions.firestore.document("people/{personId}").onWrite(event => {
+exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCreate(event => {
 
-    // create a new btc, bch, eth, ltc address for each person
-    const cryptos = ["BTC", "BCH", "ETH", "LTC"]
+    return new Promise((resolve, reject) => {
 
-    cryptos.forEach(crypto => {
+        // create a new btc, bch, eth, ltc address for each person
+        const cryptos = ["btc", "bch", "eth", "ltc"]
 
-        console.log(crypto, functions.config().coinbase[crypto], coinbase)
+        // return object
+        const returnObj = {}
 
-        // get coinbase account for given crypto
-        coinbase.getAccount(functions.config().coinbase[crypto], (error, account) => {
+        cryptos.forEach(crypto => {
 
-            if (error) {
-                slack("chain:newPerson:coinbase:getAccount:failure", error.toString)
-                return
-            }
+            const coinbaseAccount = functions.config().coinbase[crypto]
 
-            // generate new address
-            account.createAddress(null, (error, address) => {
+            // get coinbase account for given crypto
+            coinbase.getAccount(coinbaseAccount, (error, account) => {
 
                 if (error) {
-                    slack("chain:newPerson:coinbase:createAddress:failure", error.toString)
+                    slack("chain:newPerson:coinbase:getAccount:failure", error.toString)
                     return
                 }
 
-                const cryptoRef = "crypto."+crypto
+                const cryptoName = crypto.toUpperCase()
 
-                // add crypto address and initialized balance to firestore
-                const updateObj = {}
-                updateObj[cryptoRef] = {
-                    "address": address,
-                    "balance": 0
-                }
-                console.log(updateObj)
-                event.data.ref.update(updateObj).catch(error => {
-                    slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
+                // generate new address
+                account.createAddress(null, (error, address) => {
+
+                    const cryptoAddress = address.address
+
+                    if (error) {
+                        slack("chain:newPerson:coinbase:createAddress:failure", error.toString)
+                        reject(error)
+                    }
+
+                    const cryptoRef = "crypto."+cryptoName
+
+                    // add crypto address and initialized balance to firestore
+                    const updateObj = {}
+                    updateObj[cryptoRef] = {
+                        "address": cryptoAddress,
+                        "balance": 0
+                    }
+                    returnObj[cryptoRef] = updateObj[cryptoRef]
+                    event.data.ref.update(updateObj).catch(error => {
+                        slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
+                        reject(error)
+                    })
+
+                    // all is well
+                    resolve(returnObj)
+
                 })
 
             })

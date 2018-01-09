@@ -1,6 +1,9 @@
 # JetBrains IDE
 .idea/*
 
+# Local development
+local/*
+
 # Logs
 logs
 *.log
