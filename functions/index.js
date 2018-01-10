@@ -11,11 +11,6 @@ let firestore = admin.firestore()
 
 const CoinbaseClient = require('coinbase').Client;
 
-const coinbase = new CoinbaseClient({
-    'apiKey': functions.config().coinbase.key,
-    'apiSecret': functions.config().coinbase.secret
-});
-
 
 /**
  * slack
@@ -193,6 +188,11 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                 const toAddress = event.data.data().to_address
                 const amount = event.data.data().amount
 
+                const coinbase = new CoinbaseClient({
+                    'apiKey': functions.config().coinbase.key,
+                    'apiSecret': functions.config().coinbase.secret
+                });
+
                 // get coinbase account for given crypto
                 coinbase.getAccount(functions.config().coinbase[currency], (error, account) => {
 
@@ -256,6 +256,11 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
             const returnObj = {}
 
             cryptos.forEach(crypto => {
+
+                const coinbase = new CoinbaseClient({
+                    'apiKey': functions.config().coinbase.key,
+                    'apiSecret': functions.config().coinbase.secret
+                });
 
                 const coinbaseAccount = functions.config().coinbase[crypto]
 
