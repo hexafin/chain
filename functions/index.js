@@ -26,7 +26,7 @@ const coinbase = new CoinbaseClient({
  * **/
 const slack = (title, subtitle=null, content) => {
     // write slack post
-    let text = "**"+title+"**"+" | "+content
+    let text = "*"+title+"*"+" | "+content
 
     if (subtitle != null) {
         text = "**"+title+"**"+" | "+subtitle+" | "+content
@@ -135,15 +135,15 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                 const updateObj = {}
                 updateObj[balanceRef] = oldBalance - amount
                 if (oldBalance - amount < 0) {
-                    slack("chain:newTransaction:updateBalance:positiveBalance:failure", error.toString)
+                    slack("chain:newTransaction:updateBalance:positiveBalance:failure", error.toString())
                     reject("insufficient funds")
                 }
                 firestore.collection("people").doc(from_id).update(updateObj).catch(error => {
-                    slack("chain:newTransaction:updateBalance:updateFromPerson:failure", error.toString)
+                    slack("chain:newTransaction:updateBalance:updateFromPerson:failure", error.toString())
                     reject(error)
                 })
             }).catch(error => {
-                slack("chain:newTransaction:updateBalance:getFromPerson:failure", error.toString)
+                slack("Chain error", error.toString())
                 reject(error)
             })
 
@@ -156,11 +156,11 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                 const updateObj = {}
                 updateObj[balanceRef] = oldBalance + amount
                 firestore.collection("people").doc(to_id).update(updateObj).catch(error => {
-                    slack("chain:newTransaction:updateBalance:updateToPerson:failure", error.toString)
+                    slack("chain:newTransaction:updateBalance:updateToPerson:failure", error.toString())
                     resolve("insufficient funds")
                 })
             }).catch(error => {
-                slack("chain:newTransaction:updateBalance:getToPerson:failure", error.toString)
+                slack("chain:newTransaction:updateBalance:getToPerson:failure", error.toString())
                 reject(error)
             })
 
@@ -244,6 +244,8 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                 // get coinbase account for given crypto
                 coinbase.getAccount(coinbaseAccount, (error, account) => {
 
+                    console.log(coinbaseAccount, error)
+
                     if (error != null) {
                         slack("chain:newPerson:coinbase:getAccount:failure", error.toString())
                         reject(error)
@@ -253,6 +255,8 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
 
                     // generate new address
                     account.createAddress(null, (error, address) => {
+
+                        console.log(coinbaseAccount, error)
 
                         const cryptoAddress = address.address
 
@@ -266,7 +270,8 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                         // add crypto address and initialized balance to firestore
                         const updateObj = {}
                         updateObj[cryptoRef] = {
-                            "address": cryptoAddress
+                            "address": cryptoAddress,
+                            "balance": 0
                         }
                         returnObj[cryptoRef] = updateObj[cryptoRef]
                         event.data.ref.update(updateObj).catch(error => {
@@ -274,15 +279,16 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                             reject(error)
                         })
 
-                        // all is well
-                        slack("chain:newPerson:firestore:assignAddress:failure", error.toString())
-                        resolve("crypto addresses generated")
-
                     })
 
                 })
 
             })
+
+            // all is well
+            slack("Chain", event.data.data().email, "initial crypto address generation")
+            resolve("crypto addresses generated")
+
         }
         catch (err) {
             reject(err)
