@@ -16,9 +16,15 @@ jobs:
       - run:
           name: Install function dependencies
           command: cd functions;npm install;cd ..
-      - run: npm install --save-dev firebase-tools
-      - run: ./node_modules/.bin/firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
-      - run: ./node_modules/.bin/firebase deploy --token=$FIREBASE_TOKEN --non-interactive
+      - run:
+          name: Install firebase tools
+          command: npm install --save-dev firebase-tools
+      - run:
+          name: Set firebase config variables
+          command: ./node_modules/.bin/firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
+      - run:
+          name: Firebase deploy
+          command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_TOKEN --non-interactive
 
 
 workflows:
