@@ -8,19 +8,11 @@ jobs:
       - checkout
       - run: yarn
       - run: firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
-      - persist_to_workspace:
-          root: ~/project
-          paths:
-            - node_modules
 
-  master:
+  deploy:
     working_directory: ~/project
-    environment:
-      FL_OUTPUT_DIR: ~/project/output
-    shell: /bin/bash --login -o pipefail
     steps:
-      - checkout:
-          path: ~/project
+      - checkout
       - run:
           name: Set Ruby Version
           command:  echo "ruby-2.4" > ~/.ruby-version
@@ -32,13 +24,14 @@ jobs:
 
 workflows:
   version: 2
-  build-and-deploy:
+  build_and_deploy:
     jobs:
       - build
       - master:
           requires:
             - build
             filters:
-              only: master
+              branches:
+                only: master
 
 
