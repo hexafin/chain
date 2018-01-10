@@ -2,8 +2,11 @@ let axios = require("axios")
 
 const functions = require('firebase-functions')
 const admin = require("firebase-admin")
-
-admin.initializeApp(functions.config().firebase);
+const firebaseConfig = functions.config().firebase
+firebaseConfig.databaseAuthVariableOverride = {
+    uid: "chain"
+}
+admin.initializeApp();
 let firestore = admin.firestore()
 
 const CoinbaseClient = require('coinbase').Client;
