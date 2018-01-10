@@ -106,8 +106,18 @@ all transactions in the transactions collection are final (requests are not fina
         - `friend`
         - `merchant`
         - `coinbase`
+        - `external`
 - `from_id`
 - `to_id`
+    - *defined unless type is external*
+- `to_address`
+    - *only defined if type is external*
+- `tx`
+    - *only defined if type is external or coinbase*
+- `coinbase_transaction_id`
+    - *only defined if type is coinbase*
+- `coinbase_info`
+    - object with coinbase data
 - `relative_currency`
     - values
         - `USD`

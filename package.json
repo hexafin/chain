@@ -1,9 +1,0 @@
-{
-  "name": "Hexa",
-  "version": "0.0.1",
-  "private": true,
-  "dependencies": {
-    "axios": "^0.17.1",
-    "firebase-tools": "^3.16.0"
-  }
-}
