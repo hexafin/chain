@@ -6,7 +6,7 @@ const firebaseConfig = functions.config().firebase
 firebaseConfig.databaseAuthVariableOverride = {
     uid: "chain"
 }
-admin.initializeApp();
+admin.initializeApp(firebaseConfig);
 let firestore = admin.firestore()
 
 const CoinbaseClient = require('coinbase').Client;
