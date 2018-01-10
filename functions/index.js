@@ -233,7 +233,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
             // get coinbase account for given crypto
             coinbase.getAccount(coinbaseAccount, (error, account) => {
 
-                if (error) {
+                if (error != null) {
                     slack("chain:newPerson:coinbase:getAccount:failure", error.toString)
                     reject(error)
                 }
@@ -245,7 +245,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
 
                     const cryptoAddress = address.address
 
-                    if (error) {
+                    if (error != null) {
                         slack("chain:newPerson:coinbase:createAddress:failure", error.toString)
                         reject(error)
                     }
