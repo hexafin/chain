@@ -111,7 +111,7 @@ exports.coinbase = functions.https.onRequest((request, response) => {
 })
 
 // function called on each new transaction pushed to chain
-exports.hexaNewTransaction = functions.firestore.document("transactions/{transaction_id}").onWrite(event => {
+exports.hexaNewTransaction = functions.firestore.document("transactions/{transaction_id}").onCreate(event => {
 
     return new Promise((resolve, reject) => {
 
@@ -123,7 +123,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
         // update balances
         firestore.collection("people").doc(from_id).get().then(person => {
 
-            const balanceRef = "crypto."+currency
+            const balanceRef = "crypto."+currency+".balance"
 
             const oldBalance = person.data().crypto[currency].balance
 
@@ -135,6 +135,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
             }
             firestore.collection("people").doc(from_id).update(updateObj).catch(error => {
                 slack("chain:newTransaction:updateBalance:updateFromPerson:failure", error.toString)
+                reject(error)
             })
         }).catch(error => {
             slack("chain:newTransaction:updateBalance:getFromPerson:failure", error.toString)
@@ -143,7 +144,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
 
         firestore.collection("people").doc(to_id).get().then(person => {
 
-            const balanceRef = "crypto."+currency
+            const balanceRef = "crypto."+currency+".balance"
 
             const oldBalance = person.data().crypto[currency].balance
 
@@ -191,7 +192,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                     // check error
                     if (error) {
                         slack("chain:newTransaction:external:coinbase:sendMoney:failure", error.toString)
-                        return
+                        reject(error)
                     }
 
                     // update transaction entity with tx
@@ -199,6 +200,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                         tx: tx
                     }).catch(error => {
                         slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
+                        reject(error)
                     })
 
                 })
@@ -233,7 +235,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
 
                 if (error) {
                     slack("chain:newPerson:coinbase:getAccount:failure", error.toString)
-                    return
+                    reject(error)
                 }
 
                 const cryptoName = crypto.toUpperCase()
