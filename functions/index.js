@@ -42,74 +42,92 @@ const slack = (title, subtitle=null, content) => {
 // coinbase webhook
 exports.coinbase = functions.https.onRequest((request, response) => {
 
-    const timestampReceived = Math.floor(Date.now() / 1000)
-    const notificationType = request.params.type
+    return new Promise((resolve, reject) => {
 
-    // if new payment to address
-    if (notificationType == "wallet:addresses:new-payment") {
+        try {
 
-        const address = request.params.data.address
-        const amount = request.params.data.additional_data.amount.amount
-        const currency = request.params.additional_data.amount.currency
-        const tx = request.params.additional_data.hash
-        const coinbaseTransactionId = request.params.additional_data.transaction.id
-        const timestampCoinbaseCreated = Math.floor(Date.parse(request.params.created_at) / 1000)
+            const timestampReceived = Math.floor(Date.now() / 1000)
+            const notificationType = request.params.type
 
-        const addressRef = "crypto."+currency+".address"
-        const balanceRef = "crypto."+currency+".balance"
+            // if new payment to address
+            if (notificationType == "wallet:addresses:new-payment") {
 
-        // find splash person associated with address
-        firestore.collection("people").where(addressRef, "==", address).get().then(snapshot => {
+                const address = request.params.data.address
+                const amount = request.params.data.additional_data.amount.amount
+                const currency = request.params.additional_data.amount.currency
+                const tx = request.params.additional_data.hash
+                const coinbaseTransactionId = request.params.additional_data.transaction.id
+                const timestampCoinbaseCreated = Math.floor(Date.parse(request.params.created_at) / 1000)
 
-            const person = snapshot[0]
-            const email = person.data().email
-            const defaultCurrency = person.data().default_currency
+                const addressRef = "crypto." + currency + ".address"
+                const balanceRef = "crypto." + currency + ".balance"
 
-            // get exchange rate from coinbase
-            coinbase.getExchangeRates({"currency": currency}, (error, rates) => {
-                const exchangeRate = rates.data.rates.defaultCurrency
+                // find splash person associated with address
+                firestore.collection("people").where(addressRef, "==", address).get().then(snapshot => {
 
-                // create transaction
-                firestore.collection("transaction").add({
-                    type: "coinbase",
-                    to_id: person.id,
-                    currency: currency,
-                    amount: amount,
-                    relative_currency: defaultCurrency,
-                    relative_amount: exchangeRate*amount,
-                    tx: tx,
-                    fee: {
-                        currency: "BTC",
-                        amount: 0 // no fee when moving money in from coinbase
-                    },
-                    coinbase_transaction_id: coinbaseTransactionId,
-                    timestamp_initiated: timestampCoinbaseCreated,
-                    timestamp_completed: timestampReceived
-                }).then(() => {
-                    slack("chain:coinbase:createTransaction:success", email, amount)
-                }).catch((error) => {
-                    slack("chain:coinbase:createTransaction:failure", email, error.toString)
+                    const person = snapshot[0]
+                    const email = person.data().email
+                    const defaultCurrency = person.data().default_currency
+
+                    // get exchange rate from coinbase
+                    coinbase.getExchangeRates({"currency": currency}, (error, rates) => {
+
+                        if (error) {
+                            reject(error)
+                        }
+
+                        const exchangeRate = rates.data.rates.defaultCurrency
+
+                        // create transaction
+                        firestore.collection("transaction").add({
+                            type: "coinbase",
+                            to_id: person.id,
+                            currency: currency,
+                            amount: amount,
+                            relative_currency: defaultCurrency,
+                            relative_amount: exchangeRate * amount,
+                            tx: tx,
+                            fee: {
+                                currency: "BTC",
+                                amount: 0 // no fee when moving money in from coinbase
+                            },
+                            coinbase_transaction_id: coinbaseTransactionId,
+                            timestamp_initiated: timestampCoinbaseCreated,
+                            timestamp_completed: timestampReceived
+                        }).then(() => {
+                            slack("chain:coinbase:createTransaction:success", email, amount)
+                        }).catch(error => {
+                            slack("chain:coinbase:createTransaction:failure", email, error.toString())
+                            reject(error)
+                        })
+                    })
+
+                    // add inbound money to existing balance
+                    const oldBalance = person.data().crypto[currency].balance
+                    const newBalance = oldBalance + amount
+
+                    // update person's balance
+                    const updateObj = {}
+                    updateObj[balanceRef] = newBalance
+                    firestore.collection("people").doc(person.id).update(updateObj).then(() => {
+                        slack("chain:coinbase:updateBalance:success", email, oldBalance + " => " + newBalance)
+                    }).catch(error => {
+                        slack("chain:coinbase:updateBalance:failure", email, error.toString())
+                        reject(error)
+                    })
+
+                }).catch(error => {
+                    slack("chain:coinbase:queryAddress:failure", error.toString())
+                    reject(error)
                 })
-            })
 
-            // add inbound money to existing balance
-            const oldBalance = person.data().crypto[currency].balance
-            const newBalance = oldBalance + amount
+            }
+        }
+        catch (err) {
+            reject(error)
+        }
 
-            // update person's balance
-            const updateObj = {}
-            updateObj[balanceRef] = newBalance
-            firestore.collection("people").doc(person.id).update(updateObj).then(() => {
-                slack("chain:coinbase:updateBalance:success", email, oldBalance+" => "+newBalance)
-            }).catch(error => {
-                slack("chain:coinbase:updateBalance:failure", email, error.toString())
-            })
-
-        }).catch(error => {
-            slack("chain:coinbase:queryAddress:failure", error.toString())
-        })
-
-    }
+    })
 
 })
 
@@ -135,7 +153,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                 const updateObj = {}
                 updateObj[balanceRef] = oldBalance - amount
                 if (oldBalance - amount < 0) {
-                    slack("chain:newTransaction:updateBalance:positiveBalance:failure", error.toString())
+                    slack("Chain error", "chain:newTransaction:updateBalance:positiveBalance:failure")
                     reject("insufficient funds")
                 }
                 firestore.collection("people").doc(from_id).update(updateObj).catch(error => {
@@ -180,7 +198,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
 
                     // check error
                     if (error) {
-                        slack("chain:newTransaction:external:coinbase:getAccount:failure", error.toString)
+                        slack("chain:newTransaction:external:coinbase:getAccount:failure", error.toString())
                         reject(error)
                     }
 
@@ -196,7 +214,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
 
                         // check error
                         if (error) {
-                            slack("chain:newTransaction:external:coinbase:sendMoney:failure", error.toString)
+                            slack("chain:newTransaction:external:coinbase:sendMoney:failure", error.toString())
                             reject(error)
                         }
 
@@ -204,7 +222,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
                         event.data.ref.update({
                             tx: tx
                         }).catch(error => {
-                            slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
+                            slack("chain:newPerson:firestore:assignAddress:failure", error.toString())
                             reject(error)
                         })
 
@@ -244,9 +262,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                 // get coinbase account for given crypto
                 coinbase.getAccount(coinbaseAccount, (error, account) => {
 
-                    console.log(coinbaseAccount, error)
-
-                    if (error != null) {
+                    if (error) {
                         slack("chain:newPerson:coinbase:getAccount:failure", error.toString())
                         reject(error)
                     }
@@ -256,11 +272,9 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                     // generate new address
                     account.createAddress(null, (error, address) => {
 
-                        console.log(coinbaseAccount, error)
-
                         const cryptoAddress = address.address
 
-                        if (error != null) {
+                        if (error) {
                             slack("chain:newPerson:coinbase:createAddress:failure", error.toString())
                             reject(error)
                         }
@@ -275,7 +289,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                         }
                         returnObj[cryptoRef] = updateObj[cryptoRef]
                         event.data.ref.update(updateObj).catch(error => {
-                            slack("chain:newPerson:firestore:assignAddress:failure", error.toString())
+                            slack("Chain error", "chain:newPerson:firestore:assignAddress:failure", error.toString())
                             reject(error)
                         })
 
