@@ -255,8 +255,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                     // add crypto address and initialized balance to firestore
                     const updateObj = {}
                     updateObj[cryptoRef] = {
-                        "address": cryptoAddress,
-                        "balance": 0
+                        "address": cryptoAddress
                     }
                     returnObj[cryptoRef] = updateObj[cryptoRef]
                     event.data.ref.update(updateObj).catch(error => {
