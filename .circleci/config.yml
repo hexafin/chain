@@ -6,7 +6,7 @@ jobs:
       - image: circleci/node:8
     steps:
       - checkout
-      - run: sudo npm install -g firebase-tools
+      - run: npm install --save-dev firebase-tools
       - run: firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
 
   deploy:
@@ -15,13 +15,7 @@ jobs:
       - image: circleci/node:8
     steps:
       - checkout
-      - run:
-          name: Set Ruby Version
-          command:  echo "ruby-2.4" > ~/.ruby-version
-      # Not using a workspace here as Node and Yarn versions
-      # differ between the macOS image and the Docker containers above.
-      - run: yarn
-      - run: firebase deploy --token $FIREBASE_TOKEN --non-interactive
+      - run: ./node_modules/.bin/firebase deploy --token=$FIREBASE_TOKEN --non-interactive
 
 
 workflows:
@@ -29,7 +23,7 @@ workflows:
   build-and-deploy:
     jobs:
       - build
-      - master:
+      - deploy:
           requires:
             - build
           filters:
