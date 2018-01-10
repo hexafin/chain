@@ -6,28 +6,16 @@ jobs:
       - image: circleci/node:8
     steps:
       - checkout
-      - run: yarn
-      - run: firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
-      - persist_to_workspace:
-          root: ~/project
-          paths:
-            - node_modules
+      - run: npm install --save-dev firebase-tools
+      - run: ./node_modules/.bin/firebase functions:config:set coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT slack.url=$SLACK_URL
 
-  master:
+  deploy:
     working_directory: ~/project
-    environment:
-      FL_OUTPUT_DIR: ~/project/output
-    shell: /bin/bash --login -o pipefail
+    docker:
+      - image: circleci/node:8
     steps:
-      - checkout:
-          path: ~/project
-      - run:
-          name: Set Ruby Version
-          command:  echo "ruby-2.4" > ~/.ruby-version
-      # Not using a workspace here as Node and Yarn versions
-      # differ between the macOS image and the Docker containers above.
-      - run: yarn
-      - run: firebase deploy --token $FIREBASE_TOKEN --non-interactive
+      - checkout
+      - run: ./node_modules/.bin/firebase deploy --token=$FIREBASE_TOKEN --non-interactive
 
 
 workflows:
@@ -35,10 +23,11 @@ workflows:
   build-and-deploy:
     jobs:
       - build
-      - master:
+      - deploy:
           requires:
             - build
-            filters:
+          filters:
+            branches:
               only: master
 
 
