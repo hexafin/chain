@@ -245,7 +245,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                 coinbase.getAccount(coinbaseAccount, (error, account) => {
 
                     if (error != null) {
-                        slack("chain:newPerson:coinbase:getAccount:failure", error.toString)
+                        slack("chain:newPerson:coinbase:getAccount:failure", error.toString())
                         reject(error)
                     }
 
@@ -257,7 +257,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                         const cryptoAddress = address.address
 
                         if (error != null) {
-                            slack("chain:newPerson:coinbase:createAddress:failure", error.toString)
+                            slack("chain:newPerson:coinbase:createAddress:failure", error.toString())
                             reject(error)
                         }
 
@@ -270,12 +270,12 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
                         }
                         returnObj[cryptoRef] = updateObj[cryptoRef]
                         event.data.ref.update(updateObj).catch(error => {
-                            slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
+                            slack("chain:newPerson:firestore:assignAddress:failure", error.toString())
                             reject(error)
                         })
 
                         // all is well
-                        slack("chain:newPerson:firestore:assignAddress:failure", error.toString)
+                        slack("chain:newPerson:firestore:assignAddress:failure", error.toString())
                         resolve("crypto addresses generated")
 
                     })
