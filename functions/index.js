@@ -263,7 +263,9 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
 
             // create a new btc, bch, eth, ltc address for each person
             const cryptos = ["btc", "bch", "eth", "ltc"]
-            cryptos.forEach(crypto => {
+            for (let i=0;i<cryptos.length;i++) {
+
+                const crypto = cryptos[i]
 
                 const coinbaseAccount = functions.config().coinbase[crypto]
 
@@ -308,7 +310,7 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
 
                 })
 
-            })
+            }
 
             // all is well
             slack("Chain", event.data.data().email, "initial crypto address generation")
