@@ -22,7 +22,9 @@ service cloud.firestore {
     match /requests/{request_id} {
       allow read: if request.auth.uid == resource.data.from_id ||
                         request.auth.uid == resource.data.to_id;
-      allow write: if request.auth.uid == request.resource.data.to_id;
+      allow create: if request.auth.uid == request.resource.data.to_id;
+      allow update: if request.auth.uid == resource.data.from_id;
+      allow delete: if request.auth.uid == resource.data.to_id;
     }
 
   }
