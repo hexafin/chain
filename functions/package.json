@@ -11,8 +11,8 @@
   "dependencies": {
     "axios": "^0.17.1",
     "coinbase": "^2.0.6",
-    "firebase-admin": "~5.4.2",
-    "firebase-functions": "^0.7.1"
+    "firebase-admin": "^5.8.2",
+    "firebase-functions": "^0.8.1"
   },
   "private": true
 }

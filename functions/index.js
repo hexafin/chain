@@ -36,6 +36,47 @@ const slack = (title, subtitle=null, content) => {
     })
 }
 
+const notify = (type, recipient, otherPerson) => {
+  return new Promise((resolve, reject) => {
+    // the payload is what will be delivered to the device(s)
+      let payload = {
+            notification: {
+              body: '',
+            },
+          }
+
+      firestore.collection("people").doc(recipient).get().then(person => {
+        const pushToken = person.data().push_token;
+
+        firestore.collection("people").doc(otherPerson).get().then(doc => {
+          if (type == 'request') {
+            payload.notification.body = '@' + doc.data().username + ' sent you a request'
+           } else if (type == 'transaction') {
+            payload.notification.body = '@' + doc.data().username + ' sent you bitcoin'
+           } else if (type == 'accept') {
+             payload.notification.body = '@' + doc.data().username + ' accepted your request'
+           } else if (type == 'decline') {
+               payload.notification.body = '@' + doc.data().username + ' declined your request'
+           } else if (type == 'remind') {
+             payload.notification.body = '@' + doc.data().username + ' sent you a reminder'
+           } else if (type == 'delete') {
+             payload.notification.body = '@' + doc.data().username + ' deleted their request with you'
+         }
+
+              admin.messaging().sendToDevice(pushToken, payload).then(response => {
+                resolve(response)
+              }).catch(error => {
+                reject(error)
+              })
+        }).catch(error => {
+          reject(error)
+        })
+      }).catch(error => {
+        reject(error)
+      })
+  })
+}
+
 // coinbase webhook
 exports.coinbase = functions.https.onRequest((request, response) => {
 
@@ -154,6 +195,7 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
             const from_id = event.data.data().from_id
             const to_id = event.data.data().to_id
             const currency = event.data.data().currency
+            const toAddress = event.data.data().to_address
 
             // update balances
             const updateBalanceFrom = new Promise((resolve, reject) => {
@@ -202,69 +244,70 @@ exports.hexaNewTransaction = functions.firestore.document("transactions/{transac
               })
             })
 
-            // TODO: send notification to sender
-
-            // TODO: send notification to recipient
-
-            const currency = event.data.data().currency
-            const toAddress = event.data.data().to_address
-            const amount = event.data.data().amount
-
             const coinbase = new CoinbaseClient({
                 'apiKey': functions.config().coinbase.key,
                 'apiSecret': functions.config().coinbase.secret
             });
 
             // get coinbase account for given crypto
-            const getCoinbase = new Promise((resolve, reject) => {
-              coinbase.getAccount(functions.config().coinbase[currency], (error, account) => {
-
-                  // check error
-                  if (error) {
-                      slack("chain:newTransaction:external:coinbase:getAccount:failure", error.toString())
-                      reject(error)
-                  }
-
-                  // TODO: check if account has enough money to send
-
-                  // send money to external address
-                  account.sendMoney({
-                      to: toAddress,
-                      amount: amount,
-                      currency: currency,
-                      idem: event.data.id
-                  }, (error, tx) => {
-
-                      // check error
-                      if (error) {
-                          slack("chain:newTransaction:external:coinbase:sendMoney:failure", error.toString())
-                          reject(error)
-                      }
-
-                      // update transaction entity with tx
-                      event.data.ref.update({
-                          tx: tx
-                      }).then(response => {
-                        resolve(response)
-                      }).catch(error => {
-                        slack("chain:newPerson:firestore:assignAddress:failure", error.toString())
-                        reject(error)
-                      })
-
-                  })
-
-              })
-            })
+            // const getCoinbase = new Promise((resolve, reject) => {
+            //   coinbase.getAccount(functions.config().coinbase[currency], (error, account) => {
+            //
+            //       // check error
+            //       if (error) {
+            //           slack("chain:newTransaction:external:coinbase:getAccount:failure", error.toString())
+            //           reject(error)
+            //       }
+            //
+            //       // TODO: check if account has enough money to send
+            //
+            //       // send money to external address
+            //       account.sendMoney({
+            //           to: toAddress,
+            //           amount: amount,
+            //           currency: currency,
+            //           idem: event.data.id
+            //       }, (error, tx) => {
+            //
+            //           // check error
+            //           if (error) {
+            //               slack("chain:newTransaction:external:coinbase:sendMoney:failure", error.toString())
+            //               reject(error)
+            //           }
+            //
+            //           // update transaction entity with tx
+            //           event.data.ref.update({
+            //               tx: tx
+            //           }).then(response => {
+            //             resolve(response)
+            //           }).catch(error => {
+            //             slack("chain:newPerson:firestore:assignAddress:failure", error.toString())
+            //             reject(error)
+            //           })
+            //
+            //       })
+            //
+            //   })
+            // })
 
             let promises = [updateBalanceFrom, updateBalanceTo]
 
             // if transaction is out-of-network, initiate a transaction from coinbase
-            if (event.data.data().type == "external") {
-              promises.push(getCoinbase)
-            }
+            // if (event.data.data().type == "external") {
+            //   promises = [updateBalanceFrom, getCoinbase]
+            // }
 
             // execute all promises
             Promise.all(promises).then(() => {
+
+              notify('transaction', to_id, from_id).then(response => {
+                console.log('Notification sent to ' + to_id);
+                resolve('Notification sent to ' + to_id)
+              }).catch(error => {
+                console.log(error);
+                reject(error)
+              })
+
               resolve("transaction approved and balances updated")
             }).catch(error => {
               reject(error)
@@ -359,6 +402,76 @@ exports.hexaNewPerson = functions.firestore.document("people/{personId}").onCrea
       })
     })
 })
+
+exports.sendRequestNotification = functions.firestore.document("requests/{request_id}").onCreate(event => {
+    return new Promise((resolve, reject) => {
+
+      const recipient = event.data.data().from_id
+      const otherPerson = event.data.data().to_id
+
+
+      notify('request', recipient, otherPerson).then(response => {
+        console.log('Notification sent to ' + recipient);
+        resolve('Notification sent to ' + recipient)
+      }).catch(error => {
+        console.log(error);
+        reject(error)
+      })
+    });
+});
+
+exports.sendDeleteRequestNotification = functions.firestore.document("requests/{request_id}").onDelete(event => {
+    return new Promise((resolve, reject) => {
+
+      const recipient = event.data.previous.data().from_id
+      const otherPerson = event.data.previous.data().to_id
+
+
+      notify('delete', recipient, otherPerson).then(response => {
+        console.log('Notification sent to ' + recipient);
+        resolve('Notification sent to ' + recipient)
+      }).catch(error => {
+        console.log(error);
+        reject(error)
+      })
+    });
+});
+
+
+exports.sendUpdateRequestNotification = functions.firestore.document("requests/{request_id}").onUpdate(event => {
+    return new Promise((resolve, reject) => {
+      const data = event.data.data()
+      const oldData = event.data.previous.data()
+      let recipient = data.to_id
+      let otherPerson = data.from_id
+
+      let type = ''
+      if (data.accepted == true && oldData.accepted == false) {
+        type = 'accept'
+      } else if (data.declined == true && oldData.accepted == false) {
+        type = 'decline'
+      } else if (data.declined == false && data.accepted == false && data.number_of_reminders > oldData.number_of_reminders)  {
+        type = 'remind'
+        recipient = data.from_id
+        otherPerson = data.to_id
+      }
+
+      if (type != '') {
+        notify(type, recipient, otherPerson).then(response => {
+          console.log('Notification sent to ' + recipient);
+          resolve('Notification sent to ' + recipient)
+        }).catch(error => {
+          console.log(error);
+          reject(error)
+        })
+
+      } else {
+        reject('Notification Error: no type specified')
+      }
+
+    });
+});
+
 
 // TODO: GetPersonFromCrypto
 
