@@ -19,11 +19,12 @@ service cloud.firestore {
     }
 
     // request data
+    // TODO: needs to be wayyyy more specific (changed this to allow for reminders)
     match /requests/{request_id} {
       allow read: if request.auth.uid == resource.data.from_id ||
                         request.auth.uid == resource.data.to_id;
       allow create: if request.auth.uid == request.resource.data.to_id;
-      allow update: if request.auth.uid == resource.data.from_id;
+      allow update: if request.auth.uid == resource.data.from_id || request.auth.uid == resource.data.to_id;
       allow delete: if request.auth.uid == resource.data.to_id;
     }
 
