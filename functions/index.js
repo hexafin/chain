@@ -49,18 +49,19 @@ const notify = (type, recipient, otherPerson) => {
         const pushToken = person.data().push_token;
 
         firestore.collection("people").doc(otherPerson).get().then(doc => {
+          payload.notification.title = '@' + doc.data().username
           if (type == 'request') {
-            payload.notification.body = '@' + doc.data().username + ' sent you a request'
+            payload.notification.body = 'sent you a request'
            } else if (type == 'transaction') {
-            payload.notification.body = '@' + doc.data().username + ' sent you bitcoin'
+            payload.notification.body = 'paid you'
            } else if (type == 'accept') {
-             payload.notification.body = '@' + doc.data().username + ' accepted your request'
+             payload.notification.body = 'accepted your request'
            } else if (type == 'decline') {
-               payload.notification.body = '@' + doc.data().username + ' declined your request'
+               payload.notification.body = 'declined your request'
            } else if (type == 'remind') {
-             payload.notification.body = '@' + doc.data().username + ' sent you a reminder'
+             payload.notification.body = 'sent you a reminder'
            } else if (type == 'delete') {
-             payload.notification.body = '@' + doc.data().username + ' deleted their request with you'
+             payload.notification.body = 'deleted their request with you'
          }
 
               admin.messaging().sendToDevice(pushToken, payload).then(response => {
