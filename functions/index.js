@@ -81,26 +81,44 @@ const notify = (type, recipient, otherPerson) => {
   })
 }
 
-exports.splashtagExists = functions.https.onRequest((req, res) => {
-    cors(req, res, () => {
-      const splashtag = req.query.splashtag
+const validSplashtag = (splashtag) => {
 
+  // resolves true is splashtag is valid and unused
+  return new Promise((resolve, reject) => {
+
+    splashtag = splashtag.toLowerCase()
+    if (/^[a-z0-9_-]{3,15}$/.test(splashtag)) {
       firestore.collection("people").where("username", "==", splashtag).get().then(people => {
         if(people.empty) {
           firestore.collection("waitlist").where("username", "==", splashtag).get().then(waitlist => {
             if(waitlist.empty) {
-              res.status(200).send(false)
+              resolve(true)
             } else {
-              res.status(200).send(true)
+              resolve(false)
             }
           }).catch(error => {
-            res.status(400).send(error)
+            reject(error)
           })
 
         } else {
-          res.status(200).send(true)
+          resolve(false)
         }
 
+      }).catch(error => {
+        reject(error)
+      })
+    } else {
+
+      resolve(false)
+    }
+  })
+}
+
+exports.splashtagExists = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+      const splashtag = (req.query.splashtag).toLowerCase()
+      validSplashtag(splashtag).then(response => {
+        res.status(200).send(response)
       }).catch(error => {
         res.status(400).send(error)
       })
@@ -125,7 +143,6 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
       timestamp_initiated: Math.floor(now / 1000),
       timestamp_expires: Math.floor(fiveMinutes / 1000),
     }
-    console.log(waitlist);
 
     // TODO: add app store link
     const dynamicLink = {
@@ -140,27 +157,35 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
         option: 'SHORT'
       }
     }
+    validSplashtag(splastag).then(response => {
+      if(response === true) {
+        firestore.collection("waitlist").add(waitlist).then(() => {
+          axios.post("https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=" + APIkey, dynamicLink).then(response => {
+            const link = response.data.shortLink
 
-    firestore.collection("waitlist").add(waitlist).then(() => {
-      axios.post("https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=" + APIkey, dynamicLink).then(response => {
-        const link = response.data.shortLink
+            const message = "Hi @" + splashtag + "! claim your splashtag within the next 5 minutes by following this link: " + link
 
-        const message = "Hi @" + splashtag + "! claim your splashtag within the next 5 minutes by following this link: " + link
+            client.messages.create({
+              body: message,
+              to: '+' + phoneNumber,
+              from: '+12015834916'
+            })
 
-        client.messages.create({
-          body: message,
-          to: '+' + phoneNumber,
-          from: '+12015834916'
+            .then((message) => {
+              res.status(200).send(message.sid)
+            })
+
+          }).catch(error => {
+            res.status(400).send(error)
+          })
+
+        }).catch(error => {
+          res.status(400).send(error)
         })
 
-        .then((message) => {
-          res.status(200).send(message.sid)
-        })
-
-      }).catch(error => {
-        res.status(400).send(error)
-      })
-
+      } else {
+        res.status(400).send("Error invalid splashtag")
+      }
     }).catch(error => {
       res.status(400).send(error)
     })
