@@ -114,7 +114,7 @@ const validSplashtag = (splashtag) => {
   })
 }
 
-exports.splashtagExists = functions.https.onRequest((req, res) => {
+exports.splashtagAvailable = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
       const splashtag = (req.query.splashtag).toLowerCase()
       validSplashtag(splashtag).then(response => {
@@ -125,10 +125,10 @@ exports.splashtagExists = functions.https.onRequest((req, res) => {
     })
 })
 
-exports.splashtagAvailable = functions.https.onRequest((req, res) => {
+exports.claimSplashtag = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
-
-    const APIkey = functions.config().firebasekey
+    console.log(functions.config().dynamiclink.key);
+    const APIkey = functions.config().dynamiclink.key
     const splashtag = req.query.splashtag
     const phoneNumber = req.query.phone
 
@@ -151,14 +151,18 @@ exports.splashtagAvailable = functions.https.onRequest((req, res) => {
         link: "https://splahwallet.io/" + splashtag + '/' + phoneNumber,
         iosInfo: {
           iosBundleId: functions.config().bundle.id
+        },
+        socialMetaTagInfo: {
+          socialTitle: 'Claim your Splashtag!',
+          socialImageLink: 'http://i63.tinypic.com/2h7qays.jpg',
         }
       },
       suffix: {
         option: 'SHORT'
       }
     }
-    validSplashtag(splastag).then(response => {
-      if(response === true) {
+    validSplashtag(splashtag).then(response => {
+      if(response == true) {
         firestore.collection("waitlist").add(waitlist).then(() => {
           axios.post("https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=" + APIkey, dynamicLink).then(response => {
             const link = response.data.shortLink
@@ -170,9 +174,10 @@ exports.splashtagAvailable = functions.https.onRequest((req, res) => {
               to: '+' + phoneNumber,
               from: '+12015834916'
             })
-
             .then((message) => {
               res.status(200).send(message.sid)
+            }).catch(error => {
+              res.status(400).send(error)
             })
 
           }).catch(error => {
