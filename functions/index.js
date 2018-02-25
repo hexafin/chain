@@ -125,17 +125,17 @@ exports.splashtagExists = functions.https.onRequest((req, res) => {
     })
 })
 
-exports.claimSplashtag = functions.https.onRequest((req, res) => {
+exports.splashtagAvailable = functions.https.onRequest((req, res) => {
   cors(req, res, () => {
 
-    const APIkey = functions.config().firebaseKey
+    const APIkey = functions.config().firebase.key
     const splashtag = req.query.splashtag
     const phoneNumber = req.query.phone
 
     var now = new Date()
     var fiveMinutes = new Date(now.getTime() + 5*60000);
 
-    const client = new twilio(functions.config().twilioSID, functions.config().twilioToken);
+    const client = new twilio(functions.config().twilio.sid, functions.config().twilio.token);
 
     const waitlist = {
       username: splashtag,
@@ -150,7 +150,7 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
         dynamicLinkDomain: "j9kf3.app.goo.gl",
         link: "https://splahwallet.io/" + splashtag + '/' + phoneNumber,
         iosInfo: {
-          iosBundleId: functions.config().bundleID
+          iosBundleId: functions.config().bundle.id
         }
       },
       suffix: {
