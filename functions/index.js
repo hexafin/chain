@@ -13,6 +13,7 @@ const CoinbaseClient = require('coinbase').Client;
 const coinbaseKey = functions.config().coinbase.key
 const coinbaseSecret = functions.config().coinbase.secret
 
+var twilio = require('twilio');
 
 /**
  * slack
@@ -77,6 +78,90 @@ const notify = (type, recipient, otherPerson) => {
       })
   })
 }
+
+exports.splashtagExists = functions.https.onRequest((req, res) => {
+
+
+      const splashtag = req.query.splashtag
+
+      firestore.collection("people").where("username", "==", splashtag).get().then(people => {
+        if(people.empty) {
+          firestore.collection("waitlist").where("username", "==", splashtag).get().then(waitlist => {
+            if(waitlist.empty) {
+              res.status(200).send(false)
+            } else {
+              res.status(200).send(true)
+            }
+          }).catch(error => {
+            res.status(400).send(error)
+          })
+
+        } else {
+          res.status(200).send(true)
+        }
+
+      }).catch(error => {
+        res.status(400).send(error)
+      })
+
+})
+
+exports.claimSplashtag = functions.https.onRequest((req, res) => {
+  const APIkey = functions.config().firebaseKey
+  const splashtag = req.query.splashtag
+  const phoneNumber = req.query.phone
+
+  var now = new Date()
+  var fiveMinutes = new Date(now.getTime() + 5*60000);
+
+  const client = new twilio(functions.config().twilioSID, functions.config().twilioToken);
+
+  const waitlist = {
+    username: splashtag,
+    phone_number: phoneNumber,
+    timestamp_initiated: Math.floor(now / 1000),
+    timestamp_expires: Math.floor(fiveMinutes / 1000),
+  }
+  console.log(waitlist);
+
+  // TODO: add app store link
+  const dynamicLink = {
+    dynamicLinkInfo: {
+      dynamicLinkDomain: "j9kf3.app.goo.gl",
+      link: "https://splahwallet.io/" + splashtag + '/' + phoneNumber,
+      iosInfo: {
+        iosBundleId: functions.config().bundleID
+      }
+    },
+    suffix: {
+      option: 'SHORT'
+    }
+  }
+
+  firestore.collection("waitlist").add(waitlist).then(() => {
+    axios.post("https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=" + APIkey, dynamicLink).then(response => {
+      const link = response.data.shortLink
+
+      const message = "Hi @" + splashtag + "! claim your splashtag within the next 5 minutes by following this link: " + link
+
+      client.messages.create({
+        body: message,
+        to: '+' + phoneNumber,
+        from: '+12015834916'
+      })
+
+      .then((message) => {
+        res.status(200).send(message.sid)
+      })
+
+    }).catch(error => {
+      res.status(400).send(error)
+    })
+
+  }).catch(error => {
+    res.status(400).send(error)
+  })
+})
 
 // coinbase webhook
 exports.coinbase = functions.https.onRequest((request, response) => {
