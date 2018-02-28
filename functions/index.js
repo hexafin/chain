@@ -85,23 +85,61 @@ const validSplashtag = (splashtag) => {
 
   // resolves true is splashtag is valid and unused
   return new Promise((resolve, reject) => {
+    const now = Math.floor(new Date() / 1000)
+
+    let output = {
+      available: false,
+      availableUser: false,
+      availableWaitlist: false,
+      validSplashtag: false
+
+    }
 
     splashtag = splashtag.toLowerCase()
     if (/^[a-z0-9_-]{3,15}$/.test(splashtag)) {
+
+      output.validSplashtag = true
+
       firestore.collection("people").where("username", "==", splashtag).get().then(people => {
         if(people.empty) {
+          output.availableUser = true
+
           firestore.collection("waitlist").where("username", "==", splashtag).get().then(waitlist => {
+            let anyClaimed = false
+            let anyPending = false
+
             if(waitlist.empty) {
-              resolve(true)
+              output.available = true
+              output.availableWaitlist = true
+              resolve(output)
             } else {
-              resolve(false)
+
+              waitlist.forEach(doc => {
+                const data = doc.data()
+                if (data.claimed == true) {
+                  anyClaimed = true
+                } else if (data.timestamp_expires > now) {
+                  anyPending = true
+                }
+              })
+
+              if (anyPending || anyClaimed) {
+                resolve(output)
+              } else {
+                output.available = true
+                output.availableWaitlist = true
+                resolve(output)
+              }
+
             }
+
+
           }).catch(error => {
             reject(error)
           })
 
         } else {
-          resolve(false)
+          resolve(output)
         }
 
       }).catch(error => {
@@ -109,7 +147,7 @@ const validSplashtag = (splashtag) => {
       })
     } else {
 
-      resolve(false)
+      resolve(output)
     }
   })
 }
@@ -139,6 +177,7 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
 
     const waitlist = {
       username: splashtag,
+      claimed: false,
       phone_number: phoneNumber,
       timestamp_initiated: Math.floor(now / 1000),
       timestamp_expires: Math.floor(fiveMinutes / 1000),
