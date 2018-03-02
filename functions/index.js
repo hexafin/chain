@@ -201,7 +201,7 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
       }
     }
     validSplashtag(splashtag).then(response => {
-      if(response == true) {
+      if(response.available == true) {
         firestore.collection("waitlist").add(waitlist).then(() => {
           axios.post("https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=" + APIkey, dynamicLink).then(response => {
             const link = response.data.shortLink
