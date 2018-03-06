@@ -132,8 +132,6 @@ const validSplashtag = (splashtag) => {
               }
 
             }
-
-
           }).catch(error => {
             reject(error)
           })
@@ -152,38 +150,11 @@ const validSplashtag = (splashtag) => {
   })
 }
 
-exports.splashtagAvailable = functions.https.onRequest((req, res) => {
-    cors(req, res, () => {
-      const splashtag = (req.query.splashtag).toLowerCase()
-      validSplashtag(splashtag).then(response => {
-        res.status(200).send(response)
-      }).catch(error => {
-        res.status(400).send(error)
-      })
-    })
-})
-
-exports.claimSplashtag = functions.https.onRequest((req, res) => {
-  cors(req, res, () => {
-    console.log(functions.config().dynamiclink.key);
+const generateDynamicLink = (splashtag, phoneNumber = '') => {
+  // TODO: add app store link
+  return new Promise((resolve, reject) => {
     const APIkey = functions.config().dynamiclink.key
-    const splashtag = req.query.splashtag
-    const phoneNumber = req.query.phone
 
-    var now = new Date()
-    var fiveMinutes = new Date(now.getTime() + 5*60000);
-
-    const client = new twilio(functions.config().twilio.sid, functions.config().twilio.token);
-
-    const waitlist = {
-      username: splashtag,
-      claimed: false,
-      phone_number: phoneNumber,
-      timestamp_initiated: Math.floor(now / 1000),
-      timestamp_expires: Math.floor(fiveMinutes / 1000),
-    }
-
-    // TODO: add app store link
     const dynamicLink = {
       dynamicLinkInfo: {
         dynamicLinkDomain: "j9kf3.app.goo.gl",
@@ -200,11 +171,77 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
         option: 'SHORT'
       }
     }
+
+    axios.post("https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=" + APIkey, dynamicLink).then(response => {
+      resolve(response.data.shortLink)
+    }).catch(error => {
+      reject(error)
+    })
+
+  })
+}
+
+exports.createDynamicLink = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+      const splashtag = req.query.splashtag
+      generateDynamicLink(splashtag).then(link => {
+        res.status(200).send(link)
+      }).catch(error => {
+        res.status(400).send(error)
+      })
+    })
+})
+
+exports.percentTaken = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+      try {
+        const startDate = new Date(2018, 2, 7, 0, 0)
+        const now = new Date()
+
+        const timeDiff = Math.abs(startDate.getTime() - now.getTime());
+        const diffDays = (Math.ceil(timeDiff / (1000 * 3600 * 24)) % 100);
+
+        res.status(200).send(String(diffDays) + '.' + (now.getHours() % 10))
+      }
+      catch(error) {
+        res.status(400).send(error)
+      }
+
+    })
+})
+
+exports.splashtagAvailable = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+      const splashtag = (req.query.splashtag).toLowerCase()
+      validSplashtag(splashtag).then(response => {
+        res.status(200).send(response)
+      }).catch(error => {
+        res.status(400).send(error)
+      })
+    })
+})
+
+exports.claimSplashtag = functions.https.onRequest((req, res) => {
+  cors(req, res, () => {
+    const splashtag = req.query.splashtag
+    const phoneNumber = req.query.phone
+
+    var now = new Date()
+    var fiveMinutes = new Date(now.getTime() + 5*60000);
+
+    const client = new twilio(functions.config().twilio.sid, functions.config().twilio.token);
+
+    const waitlist = {
+      username: splashtag,
+      claimed: false,
+      phone_number: phoneNumber,
+      timestamp_initiated: Math.floor(now / 1000),
+      timestamp_expires: Math.floor(fiveMinutes / 1000),
+    }
+
     validSplashtag(splashtag).then(response => {
       if(response.available == true) {
-        firestore.collection("waitlist").add(waitlist).then(() => {
-          axios.post("https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=" + APIkey, dynamicLink).then(response => {
-            const link = response.data.shortLink
+          generateDynamicLink(splashtag, phoneNumber).then(link => {
 
             const message = "Hi @" + splashtag + "! claim your splashtag within the next 5 minutes by following this link: " + link
 
@@ -214,7 +251,13 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
               from: '+12015834916'
             })
             .then((message) => {
+
+              firestore.collection("waitlist").add(waitlist).then(() => {
               res.status(200).send(message.sid)
+              }).catch(error => {
+                res.status(400).send(error)
+              })
+
             }).catch(error => {
               res.status(400).send(error)
             })
@@ -222,10 +265,6 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
           }).catch(error => {
             res.status(400).send(error)
           })
-
-        }).catch(error => {
-          res.status(400).send(error)
-        })
 
       } else {
         res.status(400).send("Error invalid splashtag")
