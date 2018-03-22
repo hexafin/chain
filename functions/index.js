@@ -158,7 +158,7 @@ const generateDynamicLink = (splashtag, phoneNumber = '') => {
     const dynamicLink = {
       dynamicLinkInfo: {
         dynamicLinkDomain: "j9kf3.app.goo.gl",
-        link: "https://splahwallet.io/" + splashtag + '/' + phoneNumber,
+        link: "https://splashwallet.io/" + splashtag + '/' + phoneNumber,
         iosInfo: {
           iosBundleId: functions.config().bundle.id
         },
