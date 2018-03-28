@@ -9,6 +9,10 @@ firebaseConfig.databaseAuthVariableOverride = {
 admin.initializeApp(firebaseConfig);
 let firestore = admin.firestore();
 
+var twilio = require("twilio");
+
+const cors = require("cors")({ origin: true });
+
 /**
  * slack
  * @param title = title of post to slack channel
@@ -16,6 +20,7 @@ let firestore = admin.firestore();
  * @param content = text of post to slack channel
  *
  * **/
+
 const slack = (title, subtitle = null, content) => {
 	// write slack post
 	let text = "*" + title + "*" + " | " + content;
@@ -34,279 +39,278 @@ const slack = (title, subtitle = null, content) => {
 		});
 };
 
-// function called on each new transaction pushed to chain
-exports.hexaNewTransaction = functions.firestore
-	.document("transactions/{transaction_id}")
-	.onCreate(event => {
-		return new Promise((resolve, reject) => {
-			try {
-				const amount = event.data.data().amount;
-				const from_id = event.data.data().from_id;
-				const to_id = event.data.data().to_id;
-				const currency = event.data.data().currency;
+const notify = (type, recipient, otherPerson) => {
+	return new Promise((resolve, reject) => {
+		// the payload is what will be delivered to the device(s)
+		let payload = {
+			notification: {
+				body: ""
+			}
+		};
 
-				// update balances
-				const updateBalanceFrom = new Promise((resolve, reject) => {
-					firestore
-						.collection("people")
-						.doc(from_id)
-						.get()
-						.then(person => {
-							const balanceRef =
-								"crypto." + currency + ".balance";
+		firestore
+			.collection("people")
+			.doc(recipient)
+			.get()
+			.then(person => {
+				const pushToken = person.data().push_token;
 
-							const oldBalance = person.data().crypto[currency]
-								.balance;
-
-							const updateObj = {};
-							updateObj[balanceRef] = oldBalance - amount;
-							if (oldBalance - amount < 0) {
-								slack(
-									"Chain error",
-									"chain:newTransaction:updateBalance:positiveBalance:failure"
-								);
-								reject("insufficient funds");
-							}
-							firestore
-								.collection("people")
-								.doc(from_id)
-								.update(updateObj)
-								.then(response => {
-									resolve(response);
-								})
-								.catch(error => {
-									slack(
-										"chain:newTransaction:updateBalance:updateFromPerson:failure",
-										error.toString()
-									);
-									reject(error);
-								});
-						})
-						.catch(error => {
-							slack("Chain error", error.toString());
-							reject(error);
-						});
-				});
-
-				const updateBalanceTo = new Promise((resolve, reject) => {
-					firestore
-						.collection("people")
-						.doc(to_id)
-						.get()
-						.then(person => {
-							const balanceRef =
-								"crypto." + currency + ".balance";
-
-							const oldBalance = person.data().crypto[currency]
-								.balance;
-
-							const updateObj = {};
-							updateObj[balanceRef] = oldBalance + amount;
-							firestore
-								.collection("people")
-								.doc(to_id)
-								.update(updateObj)
-								.then(response => {
-									resolve(response);
-								})
-								.catch(error => {
-									slack(
-										"chain:newTransaction:updateBalance:updateToPerson:failure",
-										error.toString()
-									);
-									reject("insufficient funds");
-								});
-						})
-						.catch(error => {
-							slack(
-								"chain:newTransaction:updateBalance:getToPerson:failure",
-								error.toString()
-							);
-							reject(error);
-						});
-				});
-
-				// TODO: send notification to sender
-
-				// TODO: send notification to recipient
-
-				const currency = event.data.data().currency;
-				const toAddress = event.data.data().to_address;
-				const amount = event.data.data().amount;
-
-				const coinbase = new CoinbaseClient({
-					apiKey: functions.config().coinbase.key,
-					apiSecret: functions.config().coinbase.secret
-				});
-
-				// get coinbase account for given crypto
-				const getCoinbase = new Promise((resolve, reject) => {
-					coinbase.getAccount(
-						functions.config().coinbase[currency],
-						(error, account) => {
-							// check error
-							if (error) {
-								slack(
-									"chain:newTransaction:external:coinbase:getAccount:failure",
-									error.toString()
-								);
-								reject(error);
-							}
-
-							// TODO: check if account has enough money to send
-
-							// send money to external address
-							account.sendMoney(
-								{
-									to: toAddress,
-									amount: amount,
-									currency: currency,
-									idem: event.data.id
-								},
-								(error, tx) => {
-									// check error
-									if (error) {
-										slack(
-											"chain:newTransaction:external:coinbase:sendMoney:failure",
-											error.toString()
-										);
-										reject(error);
-									}
-
-									// update transaction entity with tx
-									event.data.ref
-										.update({
-											tx: tx
-										})
-										.then(response => {
-											resolve(response);
-										})
-										.catch(error => {
-											slack(
-												"chain:newPerson:firestore:assignAddress:failure",
-												error.toString()
-											);
-											reject(error);
-										});
-								}
-							);
+				firestore
+					.collection("people")
+					.doc(otherPerson)
+					.get()
+					.then(doc => {
+						payload.notification.title = "@" + doc.data().username;
+						if (type == "request") {
+							payload.notification.body = "sent you a request";
+						} else if (type == "transaction") {
+							payload.notification.body = "paid you";
+						} else if (type == "accept") {
+							payload.notification.body = "accepted your request";
+						} else if (type == "decline") {
+							payload.notification.body = "declined your request";
+						} else if (type == "remind") {
+							payload.notification.body = "sent you a reminder";
+						} else if (type == "delete") {
+							payload.notification.body =
+								"deleted their request with you";
 						}
-					);
-				});
 
-				let promises = [updateBalanceFrom, updateBalanceTo];
-
-				// if transaction is out-of-network, initiate a transaction from coinbase
-				if (event.data.data().type == "external") {
-					promises.push(getCoinbase);
-				}
-
-				// execute all promises
-				Promise.all(promises)
-					.then(() => {
-						resolve("transaction approved and balances updated");
+						admin
+							.messaging()
+							.sendToDevice(pushToken, payload)
+							.then(response => {
+								resolve(response);
+							})
+							.catch(error => {
+								reject(error);
+							});
 					})
 					.catch(error => {
 						reject(error);
 					});
-			} catch (err) {
-				reject(err);
-			}
-		});
+			})
+			.catch(error => {
+				reject(error);
+			});
 	});
+};
 
-// function called each new person
-exports.hexaNewPerson = functions.firestore
-	.document("people/{personId}")
-	.onCreate(event => {
-		const coinbase = new CoinbaseClient({
-			apiKey: coinbaseKey,
-			apiSecret: coinbaseSecret
-		});
+const validSplashtag = splashtag => {
+	// resolves true is splashtag is valid and unused
+	return new Promise((resolve, reject) => {
+		const now = Math.floor(new Date() / 1000);
 
-		const createCrypto = crypto => {
-			return new Promise((resolve, reject) => {
-				try {
-					const coinbaseAccount = functions.config().coinbase[crypto];
-
-					// get coinbase account for given crypto
-					coinbase.getAccount(coinbaseAccount, (error, account) => {
-						const cryptoName = crypto.toUpperCase();
-
-						console.log(coinbase, coinbaseAccount, account);
-
-						if (error) {
-							console.log(error);
-							reject(error);
-						}
-
-						if (account) {
-							// generate new address
-							account.createAddress(null, (error, address) => {
-								if (error) {
-									slack(
-										"chain:newPerson:coinbase:createAddress:failure",
-										error.toString()
-									);
-									reject(error);
-								}
-
-								const cryptoAddress = address.address;
-
-								const cryptoRef = "crypto." + cryptoName;
-
-								// add crypto address and initialized balance to firestore
-								const updateObj = {};
-								updateObj[cryptoRef] = {
-									address: cryptoAddress,
-									balance: 0
-								};
-								event.data.ref
-									.update(updateObj)
-									.then(() => {
-										// all is well
-										slack(
-											"Chain",
-											event.data.data().email,
-											"initial crypto address generation"
-										);
-										resolve("crypto addresses generated");
-									})
-									.catch(error => {
-										slack(
-											"Chain error",
-											"chain:newPerson:firestore:assignAddress:failure",
-											error.toString()
-										);
-										reject(error);
-									});
-							});
-						}
-					});
-				} catch (error) {
-					reject(error);
-				}
-			});
+		let output = {
+			available: false,
+			availableUser: false,
+			availableWaitlist: false,
+			validSplashtag: false
 		};
-		// create a new btc, bch, eth, ltc address for each person
-		return new Promise((resolve, reject) => {
-			const cryptos = ["btc", "bch", "eth", "ltc"];
-			let promises = [];
-			cryptos.forEach(crypto => {
-				promises.push(createCrypto(crypto));
-			});
-			Promise.all(promises)
-				.then(response => {
-					resolve(response);
+
+		splashtag = splashtag.toLowerCase();
+		if (/^[a-z0-9_-]{3,15}$/.test(splashtag)) {
+			output.validSplashtag = true;
+
+			firestore
+				.collection("people")
+				.where("username", "==", splashtag)
+				.get()
+				.then(people => {
+					if (people.empty) {
+						output.availableUser = true;
+
+						firestore
+							.collection("waitlist")
+							.where("username", "==", splashtag)
+							.get()
+							.then(waitlist => {
+								let anyClaimed = false;
+								let anyPending = false;
+
+								if (waitlist.empty) {
+									output.available = true;
+									output.availableWaitlist = true;
+									resolve(output);
+								} else {
+									waitlist.forEach(doc => {
+										const data = doc.data();
+										if (data.claimed == true) {
+											anyClaimed = true;
+										} else if (
+											data.timestamp_expires > now
+										) {
+											anyPending = true;
+										}
+									});
+
+									if (anyPending || anyClaimed) {
+										resolve(output);
+									} else {
+										output.available = true;
+										output.availableWaitlist = true;
+										resolve(output);
+									}
+								}
+							})
+							.catch(error => {
+								reject(error);
+							});
+					} else {
+						resolve(output);
+					}
 				})
 				.catch(error => {
 					reject(error);
 				});
-		});
+		} else {
+			resolve(output);
+		}
 	});
+};
 
-// TODO: GetPersonFromCrypto
+const generateDynamicLink = (splashtag, phoneNumber = "") => {
+	// TODO: add app store link
+	return new Promise((resolve, reject) => {
+		const APIkey = functions.config().dynamiclink.key;
 
-// TODO: GetMerchantFromCrypto
+		const dynamicLink = {
+			dynamicLinkInfo: {
+				dynamicLinkDomain: "j9kf3.app.goo.gl",
+				link:
+					"https://splashwallet.io/" + splashtag + "/" + phoneNumber,
+				iosInfo: {
+					iosBundleId: functions.config().bundle.id
+				},
+				socialMetaTagInfo: {
+					socialTitle: "Claim your Splashtag!",
+					socialImageLink: "http://i63.tinypic.com/2h7qays.jpg"
+				}
+			},
+			suffix: {
+				option: "SHORT"
+			}
+		};
 
-// TODO: InitiateTransaction
+		axios
+			.post(
+				"https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=" +
+					APIkey,
+				dynamicLink
+			)
+			.then(response => {
+				resolve(response.data.shortLink);
+			})
+			.catch(error => {
+				reject(error);
+			});
+	});
+};
+
+exports.createDynamicLink = functions.https.onRequest((req, res) => {
+	cors(req, res, () => {
+		const splashtag = req.query.splashtag;
+		generateDynamicLink(splashtag)
+			.then(link => {
+				res.status(200).send(link);
+			})
+			.catch(error => {
+				res.status(400).send(error);
+			});
+	});
+});
+
+exports.percentTaken = functions.https.onRequest((req, res) => {
+	cors(req, res, () => {
+		try {
+			const startDate = new Date(2018, 2, 7, 0, 0);
+			const now = new Date();
+
+			const timeDiff = Math.abs(startDate.getTime() - now.getTime());
+			const diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) % 100;
+
+			res.status(200).send(String(diffDays) + "." + now.getHours() % 10);
+		} catch (error) {
+			res.status(400).send(error);
+		}
+	});
+});
+
+exports.splashtagAvailable = functions.https.onRequest((req, res) => {
+	cors(req, res, () => {
+		const splashtag = req.query.splashtag.toLowerCase();
+		validSplashtag(splashtag)
+			.then(response => {
+				res.status(200).send(response);
+			})
+			.catch(error => {
+				res.status(400).send(error);
+			});
+	});
+});
+
+exports.claimSplashtag = functions.https.onRequest((req, res) => {
+	cors(req, res, () => {
+		const splashtag = req.query.splashtag;
+		const phoneNumber = req.query.phone;
+
+		var now = new Date();
+		var fiveMinutes = new Date(now.getTime() + 5 * 60000);
+
+		const client = new twilio(
+			functions.config().twilio.sid,
+			functions.config().twilio.token
+		);
+
+		const waitlist = {
+			username: splashtag,
+			claimed: false,
+			phone_number: phoneNumber,
+			timestamp_initiated: Math.floor(now / 1000),
+			timestamp_expires: Math.floor(fiveMinutes / 1000)
+		};
+
+		validSplashtag(splashtag)
+			.then(response => {
+				if (response.available == true) {
+					generateDynamicLink(splashtag, phoneNumber)
+						.then(link => {
+							const message =
+								"Hi @" +
+								splashtag +
+								"! claim your splashtag within the next 5 minutes by following this link: " +
+								link;
+
+							client.messages
+								.create({
+									body: message,
+									to: "+" + phoneNumber,
+									from: "+12015834916"
+								})
+								.then(message => {
+									firestore
+										.collection("waitlist")
+										.add(waitlist)
+										.then(() => {
+											res.status(200).send(message.sid);
+										})
+										.catch(error => {
+											res.status(400).send(error);
+										});
+								})
+								.catch(error => {
+									res.status(400).send(error);
+								});
+						})
+						.catch(error => {
+							res.status(400).send(error);
+						});
+				} else {
+					res.status(400).send("Error invalid splashtag");
+				}
+			})
+			.catch(error => {
+				res.status(400).send(error);
+			});
+	});
+});
