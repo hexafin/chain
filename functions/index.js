@@ -228,10 +228,12 @@ const createVirtualCard = (type, amount, currency) => {
 					last4: "1964",
 					totalCardAmount: 100
 					transactionsMax: 1,
-					status: "Approved"
+					status: "Approved",
+					testData: true
 				}
 				resolve(virtualCardData)
 
+			// when we get svb api key, this should work
 			case "USD_SVB":
 				
 				try {
@@ -298,6 +300,27 @@ const createVirtualCard = (type, amount, currency) => {
 	})
 }
 
+// WIP balance books function - to be connected to gdax
+const balanceBooks = (direction, amount, currency) => {
+	return new Promise((resolve, reject) => {
+
+		switch (direction) {
+
+			case "outbound":
+
+				if (currency == "USD") {
+					// sell bitcoin to recover USD
+
+				}
+
+			default:
+				reject("Invalid direction")
+
+		}
+
+	})
+}
+
 /* 
 generate card endpoint
 called by the mobile application after signing transaction and updating firebase doc
@@ -326,6 +349,10 @@ exports.generateCard = functions.https.onRequest((req, res) => {
 						// TODO: get details of transaction from tx_id => verify amounts and receiving address
 
 						createVirtualCard("single-use", transaction.relativeAmount, transaction.relativeCurrency).then(card => {
+							
+							// balance books WIP
+							// balanceBooks("outbound", card.totalCardAmount, card.currency)
+
 							// add card to transactionn
 							firestore.collection("transactions").doc(transactionId).update({
 								card
@@ -334,6 +361,8 @@ exports.generateCard = functions.https.onRequest((req, res) => {
 							}).catch(error => {
 								res.status(400).send(error)
 							})
+						}).catch(error => {
+							res.status(400).send(error)
 						})
 					}
 					else {
