@@ -207,6 +207,65 @@ const generateDynamicLink = (splashtag, phoneNumber = "") => {
 	});
 };
 
+exports.InitializeTransaction = functions.https.onRequest((req, res) => {
+	if (req.method == "POST") {
+		try {
+			const userId = req.body.userId;
+			const extensionId = req.body.extensionId
+			const relativeAmount = req.body.amount;
+			const currency = req.body.currency;
+			const domain = req.body.domain;
+
+			const transaction = {
+				approved: false,
+				txId: null,
+				cardInformation: null,
+				type: 'conversion',
+				timestamp_initiated: Math.floor(new Date() / 1000),
+				userId,
+				extensionId,
+				relativeAmount,
+				currency,
+				domain
+			}
+
+			firestore.collection("transactions").add(transaction).then(tranRef => {
+
+				const transactionId = tranRef.id
+
+				firestore.collection("users").doc(userId).get().then(user => {
+					const pushToken = user.data().push_token
+					const payload = {
+							notification: {
+								body: "Approve $" + relativeAmount + " purchase on " + domain,
+							},
+							data: {
+								transactionId,
+								relativeAmount,
+								domain,
+								currency
+							}
+						}
+
+					admin.messaging().sendToDevice(pushToken, payload).then(response => {
+							res.status(200).send(transactionId);
+						})
+						.catch(error => {
+							res.status(400).send(error);
+						});
+
+				}).catch(error => {
+					res.status(400).send(error);
+				})
+			}).catch(error => {
+				res.status(400).send(error);
+			})
+		} catch (error) {
+			res.status(400).send("Error: invalid parameters");
+		}
+	}
+});
+
 exports.createDynamicLink = functions.https.onRequest((req, res) => {
 	cors(req, res, () => {
 		const splashtag = req.query.splashtag;
