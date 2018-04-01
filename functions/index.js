@@ -274,7 +274,24 @@ const createVirtualCard = (transactionId, amount, currency) => {
 	
 }
 
+exports.updateTransaction = functions.firestore.document("transactions/{transaction_id}").onUpdate(event => {
+	return new Promise((resolve, reject) => {
 
+		const transaction = event.data.data()
+
+		switch (transaction.type) {
+
+			case "card":
+
+				// if transaction signed by user's private key
+				if (transaction.txId) {
+
+				}
+
+		}
+
+	})
+});
 
 exports.createDynamicLink = functions.https.onRequest((req, res) => {
 	cors(req, res, () => {
