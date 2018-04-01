@@ -9,7 +9,12 @@ firebaseConfig.databaseAuthVariableOverride = {
 admin.initializeApp(firebaseConfig);
 let firestore = admin.firestore();
 
+// app imports
 var twilio = require("twilio");
+var SVB = require("svb-client")
+const svbApiKey = functions.config().svb.apiKey;
+const svbHmacSecret = functions.config().svb.hmacSecret;
+const svbBaseUrl = functions.config().svb.baseUrl;
 
 const cors = require("cors")({ origin: true });
 
@@ -206,6 +211,14 @@ const generateDynamicLink = (splashtag, phoneNumber = "") => {
 			});
 	});
 };
+
+const createVirtualCard = () => {
+	let client = new SVB({
+		API_KEY: '',
+		HMAC_SECRET: '',
+		BASE_URL: ''
+	})
+}
 
 exports.createDynamicLink = functions.https.onRequest((req, res) => {
 	cors(req, res, () => {
