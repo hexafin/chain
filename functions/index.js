@@ -14,7 +14,6 @@ var twilio = require("twilio");
 var SVB = require("svb-client")
 const svbApiKey = functions.config().svb.apiKey;
 const svbHmacSecret = functions.config().svb.hmacSecret;
-const svbBaseUrl = functions.config().svb.baseUrl;
 
 const cors = require("cors")({ origin: true });
 
@@ -212,13 +211,70 @@ const generateDynamicLink = (splashtag, phoneNumber = "") => {
 	});
 };
 
-const createVirtualCard = () => {
-	let client = new SVB({
-		API_KEY: '',
-		HMAC_SECRET: '',
-		BASE_URL: ''
+const createVirtualCard = (transactionId, amount, currency) => {
+	return new Promise((resolve, reject) => {
+
+		switch (currency) {
+
+			case "test":
+				const virtualCardData = {
+					availableBalance: 100,
+					cardNumber: "5563382306181964",
+					currency: "USD",
+					cvc: "878,
+					expiry: "2017-10",
+					svbId: "87256",
+					last4: "1964",
+					totalCardAmount: 100
+					transactionsMax: 1,
+					status: "Approved"
+				}
+				resolve(virtualCardData)
+
+			case "USD":
+				// open firebase transaction entity
+				let client = new SVB({
+					API_KEY: svbApiKey,
+					HMAC_SECRET: svbHmacSecret,
+					BASE_URL: "https://api.svb.com/"
+				})
+				let SVBCard = new SVBCards(client);
+
+				const showCardNumber = true
+				SVBCard.create({
+					"total_card_amount": amount,
+					"rcnId": 
+				}, showCardNumber, (err, response) => {
+					
+					if (err) {
+						reject(err)
+					}
+
+					const virtualCardData = {
+						availableBalance: response.data.available_balance,
+						cardNumber: response.data.cardNumber,
+						currency: response.data.currency,
+						cvc: response.data.cvc,
+						status: response.data.status,
+						expiry: response.data.expiry,
+						svbId: response.data.id,
+						last4: response.data.last4,
+						totalCardAmount: response.data.totalCardAmount,
+						transactionsMax: response.data.transactions_max
+					}
+					resolve(virtualCardData)
+				})
+
+			default:
+				reject("Currency not supported")
+
+		}
+
 	})
+	
 }
+
+
 
 exports.createDynamicLink = functions.https.onRequest((req, res) => {
 	cors(req, res, () => {
