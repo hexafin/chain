@@ -43,7 +43,7 @@ const slack = (title, subtitle = null, content) => {
 		});
 };
 
-const notify = (type, recipient, otherPerson) => {
+const notify = (type, recipient, otherUser) => {
 	return new Promise((resolve, reject) => {
 		// the payload is what will be delivered to the device(s)
 		let payload = {
@@ -53,15 +53,15 @@ const notify = (type, recipient, otherPerson) => {
 		};
 
 		firestore
-			.collection("people")
+			.collection("users")
 			.doc(recipient)
 			.get()
-			.then(person => {
-				const pushToken = person.data().push_token;
+			.then(user => {
+				const pushToken = user.data().push_token;
 
 				firestore
-					.collection("people")
-					.doc(otherPerson)
+					.collection("users")
+					.doc(otherUser)
 					.get()
 					.then(doc => {
 						payload.notification.title = "@" + doc.data().username;
@@ -211,12 +211,12 @@ const generateDynamicLink = (splashtag, phoneNumber = "") => {
 	});
 };
 
-const createVirtualCard = (transactionId, amount, currency) => {
+const createVirtualCard = (type, amount, currency) => {
 	return new Promise((resolve, reject) => {
 
 		switch (currency) {
 
-			case "test":
+			case "USD":
 				const virtualCardData = {
 					availableBalance: 100,
 					cardNumber: "5563382306181964",
@@ -231,19 +231,43 @@ const createVirtualCard = (transactionId, amount, currency) => {
 				}
 				resolve(virtualCardData)
 
-			case "USD":
-				// open firebase transaction entity
-				let client = new SVB({
-					API_KEY: svbApiKey,
-					HMAC_SECRET: svbHmacSecret,
-					BASE_URL: "https://api.svb.com/"
-				})
-				let SVBCard = new SVBCards(client);
+			case "USD_SVB":
+				
+				try {
+					let client = new SVB({
+						API_KEY: svbApiKey,
+						HMAC_SECRET: svbHmacSecret,
+						BASE_URL: "https://api.svb.com/"
+					})
+					let SVBCard = new SVBCards(client);
+				}
+				catch(error) {
+					reject(error)
+				}
+				
+
+				let validUntil
+				let transactionsMax
+				switch (type) {
+					case "single-use":
+						// get the date two days from today
+						const twoDaysFromNow = new Date()
+						twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2)
+						var dd = twoDaysFromNow.getDate();
+						var mm = twoDaysFromNow.getMonth() + 1;
+						var y = twoDaysFromNow.getFullYear();
+						validUntil = y + "-" + mm + "-" + dd
+
+						transactionMax = 1
+
+					case default:
+						reject("Card type not supported")
+				}
 
 				const showCardNumber = true
 				SVBCard.create({
 					"total_card_amount": amount,
-					"rcnId": 
+					"valid_ending_on": validUntil
 				}, showCardNumber, (err, response) => {
 					
 					if (err) {
@@ -252,14 +276,14 @@ const createVirtualCard = (transactionId, amount, currency) => {
 
 					const virtualCardData = {
 						availableBalance: response.data.available_balance,
-						cardNumber: response.data.cardNumber,
+						cardNumber: response.data.card_number,
 						currency: response.data.currency,
 						cvc: response.data.cvc,
 						status: response.data.status,
 						expiry: response.data.expiry,
 						svbId: response.data.id,
 						last4: response.data.last4,
-						totalCardAmount: response.data.totalCardAmount,
+						totalCardAmount: response.data.total_card_amount,
 						transactionsMax: response.data.transactions_max
 					}
 					resolve(virtualCardData)
@@ -274,23 +298,138 @@ const createVirtualCard = (transactionId, amount, currency) => {
 	
 }
 
-exports.updateTransaction = functions.firestore.document("transactions/{transaction_id}").onUpdate(event => {
-	return new Promise((resolve, reject) => {
+exports.generateCard = functions.https.onRequest((req, res) => {
 
-		const transaction = event.data.data()
+	if (req.method == "POST") {
+		try {
 
-		switch (transaction.type) {
+			let firestore = admin.firestore();
 
-			case "card":
+			const transactionId = req.body.transactionId
 
-				// if transaction signed by user's private key
-				if (transaction.txId) {
+			firestore.collection("transactions").doc(transactionId).get().then(transactionDoc => {
 
+				const transaction = transactionDoc.data()
+
+				if (transaction.type == "card") {
+
+					if (transaction.txId && !transaction.card) {
+
+						// TODO: get details of transaction from tx_id => verify amounts and receiving address
+
+						createVirtualCard("single-use", transaction.relativeAmount, transaction.relativeCurrency).then(card => {
+							// add card to transactionn
+							firestore.collection("transactions").doc(transactionId).update({
+								card
+							}).then(() => {
+								res.status(200).send("Success")
+							}).catch(error => {
+								res.status(400).send(error)
+							})
+						})
+					}
+					else {
+						res.status(400).send("Transaction not ready for card")
+					}
+				}
+				else {
+					res.status(400).send("Transaction type not supported")
 				}
 
-		}
 
-	})
+			}).catch(error => {
+				res.status(400).send(error)
+			})
+
+		}
+		catch (error) {
+			res.status(400).send(error)
+		}
+	}
+});
+
+exports.updateTransaction = functions.firestore.document("transactions/{transaction_id}").onUpdate(event => {
+
+	const transaction = event.data.data()
+
+	switch (transaction.type) {
+
+		case "card":
+
+			if (transaction.txId && !transaction.card) {
+
+				// TODO: get details of transaction from tx_id => verify amounts and receiving address
+
+				createVirtualCard("single-use", transaction.relativeAmount, transaction.relativeCurrency).then(card => {
+					// add card to transactionn
+					return event.data.ref.update({
+						card
+					})
+				})
+
+			}
+
+	}
+
+});
+
+exports.initializeTransaction = functions.https.onRequest((req, res) => {
+	if (req.method == "POST") {
+		try {
+			const userId = req.body.userId;
+			const extensionId = req.body.extensionId
+			const relativeAmount = req.body.amount;
+			const relativeCurrency = req.body.currency;
+			const domain = req.body.domain;
+
+			const transaction = {
+				approved: false,
+				txId: null,
+				cardInformation: null,
+				type: 'card',
+				timestampInitiated: Math.floor(new Date() / 1000),
+				userId,
+				extensionId,
+				relativeAmount,
+				relativeCurrency,
+				domain
+			}
+
+			firestore.collection("transactions").add(transaction).then(tranRef => {
+
+				const transactionId = tranRef.id
+
+				firestore.collection("users").doc(userId).get().then(user => {
+					const pushToken = user.data().push_token
+					const payload = {
+							notification: {
+								body: "Approve $" + relativeAmount + " purchase on " + domain,
+							},
+							data: {
+								transactionId,
+								relativeAmount,
+								domain,
+								relativeCurrency
+							}
+						}
+
+					admin.messaging().sendToDevice(pushToken, payload).then(response => {
+							res.status(200).send(transactionId);
+						})
+						.catch(error => {
+							res.status(400).send(error);
+						});
+
+				}).catch(error => {
+					res.status(400).send(error);
+				})
+			}).catch(error => {
+				res.status(400).send(error);
+			})
+		} catch (error) {
+			res.status(400).send("Error: invalid parameters");
+		}
+	}
 });
 
 exports.createDynamicLink = functions.https.onRequest((req, res) => {
