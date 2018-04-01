@@ -216,6 +216,7 @@ const createVirtualCard = (type, amount, currency) => {
 
 		switch (currency) {
 
+			// just for testing
 			case "USD":
 				const virtualCardData = {
 					availableBalance: 100,
@@ -295,11 +296,18 @@ const createVirtualCard = (type, amount, currency) => {
 		}
 
 	})
-	
 }
 
+/* 
+generate card endpoint
+called by the mobile application after signing transaction and updating firebase doc
+POST parameters {
+	transactionId
+}
+creates a virtual card in accordance with the transaction and updates the firebase doc with card details
+returns "Success" or error message with appropriate request statuses
+*/
 exports.generateCard = functions.https.onRequest((req, res) => {
-
 	if (req.method == "POST") {
 		try {
 
@@ -346,31 +354,6 @@ exports.generateCard = functions.https.onRequest((req, res) => {
 			res.status(400).send(error)
 		}
 	}
-});
-
-exports.updateTransaction = functions.firestore.document("transactions/{transaction_id}").onUpdate(event => {
-
-	const transaction = event.data.data()
-
-	switch (transaction.type) {
-
-		case "card":
-
-			if (transaction.txId && !transaction.card) {
-
-				// TODO: get details of transaction from tx_id => verify amounts and receiving address
-
-				createVirtualCard("single-use", transaction.relativeAmount, transaction.relativeCurrency).then(card => {
-					// add card to transactionn
-					return event.data.ref.update({
-						card
-					})
-				})
-
-			}
-
-	}
-
 });
 
 exports.initializeTransaction = functions.https.onRequest((req, res) => {
