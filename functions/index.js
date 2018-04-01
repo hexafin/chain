@@ -222,7 +222,7 @@ const createVirtualCard = (type, amount, currency) => {
 					availableBalance: 100,
 					cardNumber: "5563382306181964",
 					currency: "USD",
-					cvc: "878,
+					cvc: "878",
 					expiry: "2017-10",
 					svbId: "87256",
 					last4: "1964",
