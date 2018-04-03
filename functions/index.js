@@ -219,14 +219,14 @@ const createVirtualCard = (type, amount, currency) => {
 			// just for testing
 			case "USD":
 				const virtualCardData = {
-					availableBalance: 100,
+					availableBalance: amount,
 					cardNumber: "5563382306181964",
-					currency: "USD",
+					currency: currency,
 					cvc: "878",
 					expiry: "2017-10",
 					svbId: "87256",
 					last4: "1964",
-					totalCardAmount: 100,
+					totalCardAmount: amount,
 					transactionsMax: 1,
 					status: "Approved",
 					testData: true
@@ -293,7 +293,7 @@ const createVirtualCard = (type, amount, currency) => {
 				})
 
 			default:
-				reject("Currency not supported")
+				reject("Currency not supported: "+currency)
 
 		}
 
