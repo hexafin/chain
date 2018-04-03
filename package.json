@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "svb-cards": "^1.3.2"
+    "svb-cards": "^1.3.2",
+    "svb-client": "^2.6.1"
   }
 }
