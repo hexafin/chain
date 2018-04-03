@@ -12,8 +12,8 @@ let firestore = admin.firestore();
 // app imports
 var twilio = require("twilio");
 var SVB = require("svb-client")
-const svbApiKey = functions.config().svb.apiKey;
-const svbHmacSecret = functions.config().svb.hmacSecret;
+const svbApiKey = functions.config().svb.api_key;
+const svbHmacSecret = functions.config().svb.hmac_secret;
 
 const cors = require("cors")({ origin: true });
 

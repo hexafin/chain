@@ -21,7 +21,7 @@ jobs:
           command: npm install --save-dev firebase-tools
       - run:
           name: Set firebase config variables
-          command: ./node_modules/.bin/firebase functions:config:set bundle.id=$BUNDLE_ID twilio.token=$TWILIO_TOKEN twilio.sid=$TWILIO_SID dynamiclink.key=$FIREBASE_KEY coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT svb.apiKey=$SVB_API_KEY svb.hmacSecret=$SVB_HMAC_SECRET slack.url=$SLACK_URL
+          command: ./node_modules/.bin/firebase functions:config:set bundle.id=$BUNDLE_ID twilio.token=$TWILIO_TOKEN twilio.sid=$TWILIO_SID dynamiclink.key=$FIREBASE_KEY coinbase.key=$COINBASE_KEY coinbase.secret=$COINBASE_SECRET coinbase.btc=$COINBASE_BTC_ACCOUNT coinbase.bch=$COINBASE_BCH_ACCOUNT coinbase.eth=$COINBASE_ETH_ACCOUNT coinbase.ltc=$COINBASE_LTC_ACCOUNT svb.api_key=$SVB_API_KEY svb.hmac_secret=$SVB_HMAC_SECRET slack.url=$SLACK_URL
       - run:
           name: Firebase deploy
           command: ./node_modules/.bin/firebase deploy --token=$FIREBASE_TOKEN --non-interactive
