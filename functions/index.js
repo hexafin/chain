@@ -226,7 +226,7 @@ const createVirtualCard = (type, amount, currency) => {
 					expiry: "2017-10",
 					svbId: "87256",
 					last4: "1964",
-					totalCardAmount: 100
+					totalCardAmount: 100,
 					transactionsMax: 1,
 					status: "Approved",
 					testData: true
