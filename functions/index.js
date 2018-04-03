@@ -263,7 +263,7 @@ const createVirtualCard = (type, amount, currency) => {
 
 						transactionMax = 1
 
-					case default:
+					default:
 						reject("Card type not supported")
 				}
 
