@@ -14,6 +14,8 @@ var twilio = require("twilio");
 var SVB = require("svb-client")
 const svbApiKey = functions.config().svb.api_key;
 const svbHmacSecret = functions.config().svb.hmac_secret;
+const hexaBtcAddress = functions.config().hexa.btc_address;
+const SATOSHI_CONVERSION = 100000000.0
 
 const cors = require("cors")({ origin: true });
 
@@ -332,58 +334,65 @@ returns "Success" or error message with appropriate request statuses
 */
 exports.generateCard = functions.https.onRequest((req, res) => {
 	if (req.method == "POST") {
-		try {
+		async function processCard() {
+			try {
 
-			let firestore = admin.firestore();
+				let firestore = admin.firestore();
 
-			const transactionId = req.body.transactionId
+				const transactionId = req.body.transactionId
 
-			firestore.collection("transactions").doc(transactionId).get().then(transactionDoc => {
+				const transactionDoc = await firestore.collection("transactions").doc(transactionId).get()
 
 				const transaction = transactionDoc.data()
 
 				if (transaction.type == "card") {
 
-					if (transaction.txId && !transaction.card) {
+					if (transaction.approval && transaction.txId && !transaction.card) {
 
-						// TODO: get details of transaction from tx_id => verify amounts and receiving address
+						// const txResponse = await axios.post("https://blockchain.info/rawtx/" + transaction.txId)
+						// let txAmountSatoshi = null
+						//
+						// for(tx of txResponse.data.out) {
+						// 	if(tx.addr == hexaBtcAddress) {
+						// 		txAmountSatoshi += tx.value
+						// 	}
+						// }
+						//
+						// // get latest exchange amount from GDAX
+						// const exchangeResponse = await axios.post("https://api.gdax.com/products/BTC-" + transaction.relativeCurrency + "/ticker")
+						//
+						// if (!txAmountSatoshi || txAmountSatoshi < SATOSHI_CONVERSION*(transaction.relativeAmount/exchangeResponse.price) ) {
+						// 	return Promise.reject("BTC transaction invalid")
+						// }
 
-						createVirtualCard("single-use", transaction.relativeAmount, transaction.relativeCurrency).then(card => {
+						const card = await createVirtualCard("single-use", transaction.relativeAmount, transaction.relativeCurrency)
 
 							// balance books WIP
 							// balanceBooks("outbound", card.totalCardAmount, card.currency)
 
 							// add card to transactionn
-							firestore.collection("transactions").doc(transactionId).update({
-								card
-							}).then(() => {
-								res.status(200).send("Success")
-							}).catch(error => {
-								res.status(400).send(error)
-							})
-						}).catch(error => {
-							res.status(400).send(error)
-						})
+						await firestore.collection("transactions").doc(transactionId).update({card})
+						return Promise.resolve("Success")
 					}
 					else {
-						res.status(400).send("Transaction not ready for card")
+						return Promise.reject("Transaction not ready for card")
 					}
 				}
 				else {
-					res.status(400).send("Transaction type not supported")
+					return Promise.reject("Transaction type not supported")
 				}
+			} catch (error) {
+					return Promise.reject(error)
+			  }
+			}
 
-
+			processCard().then((response) => {
+				res.status(200).send(response)
 			}).catch(error => {
 				res.status(400).send(error)
 			})
-
 		}
-		catch (error) {
-			res.status(400).send(error)
-		}
-	}
-});
+	})
 
 exports.initializeTransaction = functions.https.onRequest((req, res) => {
 	if (req.method == "POST") {
