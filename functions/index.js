@@ -236,7 +236,7 @@ const createVirtualCard = (type, amount, currency) => {
 
 			// when we get svb api key, this should work
 			case "USD_SVB":
-				
+
 				try {
 					let client = new SVB({
 						API_KEY: svbApiKey,
@@ -248,7 +248,7 @@ const createVirtualCard = (type, amount, currency) => {
 				catch(error) {
 					reject(error)
 				}
-				
+
 
 				let validUntil
 				let transactionsMax
@@ -273,7 +273,7 @@ const createVirtualCard = (type, amount, currency) => {
 					"total_card_amount": amount,
 					"valid_ending_on": validUntil
 				}, showCardNumber, (err, response) => {
-					
+
 					if (err) {
 						reject(err)
 					}
@@ -322,7 +322,7 @@ const balanceBooks = (direction, amount, currency) => {
 	})
 }
 
-/* 
+/*
 generate card endpoint
 called by the mobile application after signing transaction and updating firebase doc
 POST parameters {
@@ -350,7 +350,7 @@ exports.generateCard = functions.https.onRequest((req, res) => {
 						// TODO: get details of transaction from tx_id => verify amounts and receiving address
 
 						createVirtualCard("single-use", transaction.relativeAmount, transaction.relativeCurrency).then(card => {
-							
+
 							// balance books WIP
 							// balanceBooks("outbound", card.totalCardAmount, card.currency)
 
