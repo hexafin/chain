@@ -8,6 +8,7 @@ firebaseConfig.databaseAuthVariableOverride = {
 };
 admin.initializeApp(firebaseConfig);
 let firestore = admin.firestore();
+let moment = require("moment")
 
 // app imports
 var twilio = require("twilio");
@@ -117,16 +118,16 @@ const validSplashtag = splashtag => {
 			output.validSplashtag = true;
 
 			firestore
-				.collection("people")
-				.where("username", "==", splashtag)
+				.collection("users")
+				.where("splashtag", "==", splashtag)
 				.get()
-				.then(people => {
-					if (people.empty) {
+				.then(users => {
+					if (users.empty) {
 						output.availableUser = true;
 
 						firestore
 							.collection("waitlist")
-							.where("username", "==", splashtag)
+							.where("splashtag", "==", splashtag)
 							.get()
 							.then(waitlist => {
 								let anyClaimed = false;
@@ -399,7 +400,7 @@ exports.initializeTransaction = functions.https.onRequest((req, res) => {
 				txId: null,
 				cardInformation: null,
 				type: 'card',
-				timestampInitiated: Math.floor(new Date() / 1000),
+				timestampInitiated: moment().unix(),
 				userId,
 				extensionId,
 				relativeAmount,
@@ -412,7 +413,7 @@ exports.initializeTransaction = functions.https.onRequest((req, res) => {
 				const transactionId = tranRef.id
 
 				firestore.collection("users").doc(userId).get().then(user => {
-					const pushToken = user.data().push_token
+					const pushToken = user.data().pushToken
 					const payload = {
 							notification: {
 								body: "Approve $" + relativeAmount + " purchase on " + domain,
@@ -500,7 +501,7 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
 		);
 
 		const waitlist = {
-			username: splashtag,
+			splashtag: splashtag,
 			claimed: false,
 			phone_number: phoneNumber,
 			timestamp_initiated: Math.floor(now / 1000),
