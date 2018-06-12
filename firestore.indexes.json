@@ -5,56 +5,14 @@
       "collectionId": "transactions",
       "fields": [
         {
-          "fieldPath": "from_user",
+          "fieldPath": "timestamp",
           "mode": "DESCENDING"
         },
         {
-          "fieldPath": "to_user",
-          "mode": "DESCENDING"
-        },
-        {
-          "fieldPath": "timestamp_initiated",
-          "mode": "DESCENDING"
-        }
-      ]
-    },
-    // person index for finding a user
-    {
-      "collectionId": "people",
-      "fields": [
-        {
-          "fieldPath": "first_name",
-          "mode": "DESCENDING"
-        },
-        {
-          "fieldPath": "last_name",
-          "mode": "DESCENDING"
-        },
-        {
-          "fieldPath": "username",
-          "mode": "DESCENDING"
-        },
-        {
-          "fieldPath": "email",
-          "mode": "DESCENDING"
-        },
-        {
-          "fieldPath": "crypto.BTC.address",
-          "mode": "DESCENDING"
-        },
-        {
-          "fieldPath": "crypto.ETH.address",
-          "mode": "DESCENDING"
-        },
-        {
-          "fieldPath": "crypto.LTC.address",
-          "mode": "DESCENDING"
-        },
-        {
-          "fieldPath": "crypto.BCH.address",
+          "fieldPath": "userId",
           "mode": "DESCENDING"
         }
       ]
     }
-  ]
+ ]
 }
