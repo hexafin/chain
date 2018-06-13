@@ -16,6 +16,9 @@ var SVB = require("svb-client")
 const svbApiKey = functions.config().svb.api_key;
 const svbHmacSecret = functions.config().svb.hmac_secret;
 
+const algoliasearch = require('algoliasearch');
+const client = algoliasearch(functions.config().algolia.appid, functions.config().algolia.adminkey);
+
 const cors = require("cors")({ origin: true });
 
 /**

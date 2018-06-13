@@ -9,6 +9,7 @@
     "logs": "firebase functions:log"
   },
   "dependencies": {
+    "algoliasearch": "^3.27.1",
     "axios": "^0.17.1",
     "coinbase": "^2.0.6",
     "cors": "^2.8.4",
