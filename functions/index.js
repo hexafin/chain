@@ -572,6 +572,7 @@ exports.updateIndex = functions.firestore.document('/users/{userId}').onWrite((c
 	  	})
 	}
 
+	data['phone_numbers'] = [data.phoneNumber.slice(1), data.phoneNumber.slice(-10), '0'+data.phoneNumber.slice(-10)]
 	data['objectID'] = userId
 
 	return index.saveObject(data, (err, content) => {
