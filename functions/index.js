@@ -2,11 +2,11 @@ let axios = require("axios");
 
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const firebaseConfig = functions.config().firebase;
-firebaseConfig.databaseAuthVariableOverride = {
+const appOptions = JSON.parse(process.env.FIREBASE_CONFIG);
+appOptions.databaseAuthVariableOverride = {
 	uid: "chain"
 };
-admin.initializeApp(firebaseConfig);
+admin.initializeApp(appOptions);
 let firestore = admin.firestore();
 let moment = require("moment")
 
@@ -17,7 +17,7 @@ const svbApiKey = functions.config().svb.api_key;
 const svbHmacSecret = functions.config().svb.hmac_secret;
 
 const algoliasearch = require('algoliasearch');
-const client = algoliasearch(functions.config().algolia.appid, functions.config().algolia.adminkey);
+const algolia = algoliasearch(functions.config().algolia.appid, functions.config().algolia.adminkey);
 
 const cors = require("cors")({ origin: true });
 
@@ -555,3 +555,30 @@ exports.claimSplashtag = functions.https.onRequest((req, res) => {
 			});
 	});
 });
+
+// Updates the algolia search index when new user entries are created or updated.
+exports.updateIndex = functions.firestore.document('/users/{userId}').onWrite((change, context) => {
+
+	const index = algolia.initIndex('Users')
+
+	const userId = context.params.userId
+	const data = change.after.data()
+
+	// remove index if entry is deleted
+	if (!data) {
+		return index.deleteObject(userId, (err) => {
+			if (err) throw err
+			console.log('User removed from algolia index', userId)
+	  	})
+	}
+
+	data['phone_numbers'] = [data.phoneNumber.slice(1), data.phoneNumber.slice(-10), '0'+data.phoneNumber.slice(-10)]
+	data['objectID'] = userId
+
+	return index.saveObject(data, (err, content) => {
+		if (err) throw err
+		console.log('User added to algolia index', data.objectID) 
+	})
+
+});
+
