@@ -9,7 +9,11 @@
           "mode": "DESCENDING"
         },
         {
-          "fieldPath": "userId",
+          "fieldPath": "fromId",
+          "mode": "DESCENDING"
+        },
+        {
+          "fieldPath": "toId",
           "mode": "DESCENDING"
         }
       ]

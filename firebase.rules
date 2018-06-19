@@ -11,9 +11,9 @@ service cloud.firestore {
 
     // transactions
     match /transactions/{transaction_id} {
-      allow read: if request.auth.uid == resource.data.userId;
-      allow write: if request.auth.uid == request.resource.data.userId;
-      allow delete: if request.auth.uid == resource.data.userId;
+      allow read: if request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId;
+      allow write: if request.auth.uid == request.resource.data.fromId || request.auth.uid == request.resource.data.toId;
+      allow delete: if request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId;
     }
 
     // request data
