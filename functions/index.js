@@ -21,6 +21,8 @@ const algolia = algoliasearch(functions.config().algolia.appid, functions.config
 
 const cors = require("cors")({ origin: true });
 
+const SATOSHI_CONVERSION = 100000000
+
 /**
  * slack
  * @param title = title of post to slack channel
@@ -47,62 +49,30 @@ const slack = (title, subtitle = null, content) => {
 		});
 };
 
-const notify = (type, recipient, otherUser) => {
+const notify = (toId, title, body) => {
 	return new Promise((resolve, reject) => {
 		// the payload is what will be delivered to the device(s)
 		let payload = {
 			notification: {
 				body: ""
 			}
-		};
+		}
+		firestore.collection("users").doc(toId).get().then(doc => {
+			const pushToken = doc.data().pushToken
 
-		firestore
-			.collection("users")
-			.doc(recipient)
-			.get()
-			.then(user => {
-				const pushToken = user.data().push_token;
+			payload.notification.title = title;
+			payload.notification.body = body;
 
-				firestore
-					.collection("users")
-					.doc(otherUser)
-					.get()
-					.then(doc => {
-						payload.notification.title = "@" + doc.data().username;
-						if (type == "request") {
-							payload.notification.body = "sent you a request";
-						} else if (type == "transaction") {
-							payload.notification.body = "paid you";
-						} else if (type == "accept") {
-							payload.notification.body = "accepted your request";
-						} else if (type == "decline") {
-							payload.notification.body = "declined your request";
-						} else if (type == "remind") {
-							payload.notification.body = "sent you a reminder";
-						} else if (type == "delete") {
-							payload.notification.body =
-								"deleted their request with you";
-						}
-
-						admin
-							.messaging()
-							.sendToDevice(pushToken, payload)
-							.then(response => {
-								resolve(response);
-							})
-							.catch(error => {
-								reject(error);
-							});
-					})
-					.catch(error => {
-						reject(error);
-					});
+			admin.messaging().sendToDevice(pushToken, payload).then(() => {
+				resolve()
+			}).catch(error => {
+				reject(error)
 			})
-			.catch(error => {
-				reject(error);
-			});
-	});
-};
+		}).catch(error => {
+			reject(error)
+		})
+	})
+}
 
 const validSplashtag = splashtag => {
 	// resolves true is splashtag is valid and unused
@@ -580,5 +550,29 @@ exports.updateIndex = functions.firestore.document('/users/{userId}').onWrite((c
 		console.log('User added to algolia index', data.objectID) 
 	})
 
+});
+
+// Sends notification on transaction creation
+exports.notifyTransaction = functions.firestore.document('/transactions/{transactionId}').onCreate((snap, context) => {
+	return new Promise ((resolve, reject) => {
+		const newTransaction = snap.data()
+		const btcAmount = (parseFloat(newTransaction.amount.subtotal)/SATOSHI_CONVERSION).toFixed(2)
+
+		firestore.collection("users").doc(newTransaction.fromId).get().then(doc => {
+			const fromSplashtag = doc.data().splashtag
+			const title = '@' + fromSplashtag
+			const body = 'sent you ' + btcAmount + ' ' + newTransaction.currency
+			console.log(newTransaction.toId, title, body)
+			notify(newTransaction.toId, title, body).then(() => {
+				resolve()
+			}).catch(e => {
+				console.log('Notify transaction error: ', e)
+				reject(e)
+			})
+		}).catch(e => {
+			console.log('Notify transaction error: ', e)
+			reject(e)
+		})
+	})
 });
 
