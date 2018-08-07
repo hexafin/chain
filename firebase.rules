@@ -1,29 +1,23 @@
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function getBtcAddress(address) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.wallets.BTC.testnet.address == address || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.wallets.BTC.mainnet.address == address;
+    }
+
     // users
     match /users/{user_id} {
-      allow read: if request.auth != null;
-      // TODO: more complex read rules (private vs. public information)
+      allow read: if request.auth.uid != null;
       allow write: if request.auth.uid == user_id || request.auth.uid == "chain";
+      allow delete: if request.auth.uid == user_id || request.auth.uid == "chain";
     }
 
 
     // transactions
     match /transactions/{transaction_id} {
-      allow read: if request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId;
+      allow read: if getBtcAddress(resource.data.fromAddress) || getBtcAddress(resource.data.toAddress)|| request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId;
       allow write: if request.auth.uid == request.resource.data.fromId || request.auth.uid == request.resource.data.toId;
       allow delete: if request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId;
-    }
-
-    // request data
-    // TODO: needs to be wayyyy more specific (changed this to allow for reminders)
-    match /requests/{request_id} {
-      allow read: if request.auth.uid == resource.data.from_id ||
-                        request.auth.uid == resource.data.to_id;
-      allow create: if request.auth.uid == request.resource.data.to_id;
-      allow update: if request.auth.uid == resource.data.from_id || request.auth.uid == resource.data.to_id;
-      allow delete: if request.auth.uid == resource.data.to_id;
     }
 
   }
