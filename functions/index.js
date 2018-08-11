@@ -360,3 +360,20 @@ exports.notifyTransaction = functions.firestore.document('/transactions/{transac
 	})
 });
 
+exports.thankTransaction = functions.firestore.document('/transactions/{transactionId}').onUpdate((change, context) => {
+	return new Promise((resolve, reject) => {
+		const oldData = change.before.data()
+		const newData = change.after.data()
+		if (oldData.thanked != newData.thanked && newData.thanked) {
+			const title = '@' + newData.toSplashtag
+			const body = "Said thanks!"
+			notify(newData.fromId, title, body).then(() => {
+				console.log('thank notification sent: ', newData.fromId, title, body)
+				resolve()
+			}).catch(e => {
+				console.log('thank notification error: ', e)
+				reject(e)
+			})
+		}
+	})
+})
