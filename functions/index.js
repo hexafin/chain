@@ -368,7 +368,7 @@ exports.subscribeEmail = functions.https.onRequest((req, res) => {
 			          "url": "https://us19.api.mailchimp.com/3.0/lists/2b780c32c9/members",
 			          "auth": {
 			              username: 'api',
-			              password: firebase.config().mailchimp.apikey,
+			              password: functions.config().mailchimp.apikey,
 			            },
 			          "data": {
 			              status: 'subscribed',
