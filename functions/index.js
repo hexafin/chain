@@ -363,12 +363,13 @@ exports.notifyTransaction = functions.firestore.document('/transactions/{transac
 exports.subscribeEmail = functions.https.onRequest((req, res) => {
 	cors(req, res, () => {
 		try {
+			console.log(functions.config().mailchimp.apikey)
 	        axios.request({
 			    "method": 'post',
 			    "url": "https://us19.api.mailchimp.com/3.0/lists/2b780c32c9/members",
 			    "auth": {
 			        username: 'api',
-			        password: functions.config().mailchimp.appkey,
+			        password: functions.config().mailchimp.apikey,
 			    	},
 			    "data": {
 		        	status: 'subscribed',
