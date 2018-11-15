@@ -368,7 +368,7 @@ exports.subscribeEmail = functions.https.onRequest((req, res) => {
 			    "url": "https://us19.api.mailchimp.com/3.0/lists/2b780c32c9/members",
 			    "auth": {
 			        username: 'api',
-			        password: functions.config().mailgun.appkey,
+			        password: functions.config().mailchimp.appkey,
 			    	},
 			    "data": {
 		        	status: 'subscribed',
