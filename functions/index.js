@@ -360,3 +360,28 @@ exports.notifyTransaction = functions.firestore.document('/transactions/{transac
 	})
 });
 
+exports.subscribeEmail = functions.https.onRequest((req, res) => {
+	cors(req, res, () => {
+		try {
+	        axios.request({
+			    "method": 'post',
+			    "url": "https://us19.api.mailchimp.com/3.0/lists/2b780c32c9/members",
+			    "auth": {
+			        username: 'api',
+			        password: functions.config().mailgun.appkey,
+			    	},
+			    "data": {
+		        	status: 'subscribed',
+		        	email_address: req.query.email,
+				    },
+			}).then(response => {
+				res.status(200).send(response.data);
+			}).catch(e => {
+				res.status(400).send(e)
+			})
+		} catch (e) {
+			res.status(400).send(e);
+		}
+	});
+});
+
