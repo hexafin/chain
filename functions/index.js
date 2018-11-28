@@ -360,6 +360,7 @@ exports.notifyTransaction = functions.firestore.document('/transactions/{transac
 	})
 });
 
+
 exports.thankTransaction = functions.firestore.document('/transactions/{transactionId}').onUpdate((change, context) => {
 	return new Promise((resolve, reject) => {
 		const oldData = change.before.data()
@@ -377,3 +378,30 @@ exports.thankTransaction = functions.firestore.document('/transactions/{transact
 		}
 	})
 })
+
+exports.subscribeEmail = functions.https.onRequest((req, res) => {
+	cors(req, res, () => {
+		try {
+	      axios.request({
+			          "method": 'post',
+			          "url": "https://us19.api.mailchimp.com/3.0/lists/2b780c32c9/members",
+			          "auth": {
+			              username: 'api',
+			              password: functions.config().mailchimp.apikey,
+			            },
+			          "data": {
+			              status: 'subscribed',
+			              email_address: req.query.email,
+			            }
+	      }).then(response => {
+	        res.status(200).send(response.data)
+			}).catch(e => {
+		        res.status(400).send(e)
+			})
+		} catch (e) {
+			res.status(400).send(e);
+		}
+	});
+});
+
+

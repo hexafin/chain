@@ -1,8 +1,8 @@
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function getBtcAddress(address) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.wallets.BTC.testnet.address == address || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.wallets.BTC.mainnet.address == address;
+    function userHasAddress(address) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.wallets.ETH.testnet.address.toLowerCase() == address || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.wallets.ETH.mainnet.address.toLowerCase() == address;
     }
 
     // users
@@ -15,8 +15,8 @@ service cloud.firestore {
 
     // transactions
     match /transactions/{transaction_id} {
-      allow read: if getBtcAddress(resource.data.fromAddress) || getBtcAddress(resource.data.toAddress)|| request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId;
-      allow write: if request.auth.uid == request.resource.data.fromId || request.auth.uid == request.resource.data.toId;
+      allow read: if request.auth.uid != null;
+      allow write: if request.auth.uid == request.resource.data.fromId || request.auth.uid == request.resource.data.toId || request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId;
       allow delete: if request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId;
     }
 
