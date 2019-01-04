@@ -27,6 +27,14 @@ const cryptoUnits = {
     GUSD: 100,
     USD: 100,
 }
+
+const decimalLengths = {
+    BTC: 5,
+    ETH: 6,
+    USD: 2,
+    GUSD: 2,
+}
+
 /**
  * slack
  * @param title = title of post to slack channel
@@ -174,7 +182,7 @@ exports.initializeTransaction = functions.https.onRequest((req, res) => {
 				domain
 			}
 
-			firestore.collection("transactions").add(transaction).then(tranRef => {
+			firestore.collection("cards").add(transaction).then(tranRef => {
 
 				const transactionId = tranRef.id
 
@@ -207,6 +215,21 @@ exports.initializeTransaction = functions.https.onRequest((req, res) => {
 			})
 		} catch (error) {
 			res.status(400).send("Error: invalid parameters");
+		}
+	}
+});
+
+exports.generateCard = functions.https.onRequest((req, res) => {
+	if (req.method == "POST") {
+		try {
+			const transactionId = req.body.transactionId;
+			firestore.collection("cards").doc(transactionId).update({card: 1111}).then(() => {
+				res.status(200).send('Success');
+			}).catch(error => {
+				res.status(400).send(error);
+			})
+		} catch (error) {
+			res.status(400).send(error);
 		}
 	}
 });
@@ -336,7 +359,8 @@ exports.updateIndex = functions.firestore.document('/users/{userId}').onWrite((c
 exports.notifyTransaction = functions.firestore.document('/transactions/{transactionId}').onCreate((snap, context) => {
 	return new Promise ((resolve, reject) => {
 		const newTransaction = snap.data()
-		const amount = (parseFloat(newTransaction.amount.subtotal)/cryptoUnits[newTransaction.currency]).toFixed(6)
+		const decimals = decimalLengths[newTransaction.currency]
+		const amount = (parseFloat(newTransaction.amount.subtotal)/cryptoUnits[newTransaction.currency]).toFixed(decimals)
 
 		if (newTransaction.amount.subtotal && newTransaction.fromId && newTransaction.toId) {
 			let relativeMessage = ''
