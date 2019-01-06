@@ -18,7 +18,22 @@ const algolia = algoliasearch(functions.config().algolia.appid, functions.config
 
 const cors = require("cors")({ origin: true });
 
-const SATOSHI_CONVERSION = 100000000
+var mailgun = require("mailgun-js");
+mailgun = mailgun({apiKey: 'd49b4bcf8dda23b0aec8643af05b79ee-4412457b-2a8b0271', domain: 'mg.splash.tech'})
+
+const cryptoUnits = {
+    BTC: 100000000,
+    ETH: 1000000000000000000,
+    GUSD: 100,
+    USD: 100,
+}
+
+const decimalLengths = {
+    BTC: 5,
+    ETH: 6,
+    USD: 2,
+    GUSD: 2,
+}
 
 /**
  * slack
@@ -167,7 +182,7 @@ exports.initializeTransaction = functions.https.onRequest((req, res) => {
 				domain
 			}
 
-			firestore.collection("transactions").add(transaction).then(tranRef => {
+			firestore.collection("cards").add(transaction).then(tranRef => {
 
 				const transactionId = tranRef.id
 
@@ -200,6 +215,21 @@ exports.initializeTransaction = functions.https.onRequest((req, res) => {
 			})
 		} catch (error) {
 			res.status(400).send("Error: invalid parameters");
+		}
+	}
+});
+
+exports.generateCard = functions.https.onRequest((req, res) => {
+	if (req.method == "POST") {
+		try {
+			const transactionId = req.body.transactionId;
+			firestore.collection("cards").doc(transactionId).update({card: 1111}).then(() => {
+				res.status(200).send('Success');
+			}).catch(error => {
+				res.status(400).send(error);
+			})
+		} catch (error) {
+			res.status(400).send(error);
 		}
 	}
 });
@@ -329,7 +359,8 @@ exports.updateIndex = functions.firestore.document('/users/{userId}').onWrite((c
 exports.notifyTransaction = functions.firestore.document('/transactions/{transactionId}').onCreate((snap, context) => {
 	return new Promise ((resolve, reject) => {
 		const newTransaction = snap.data()
-		const btcAmount = (parseFloat(newTransaction.amount.subtotal)/SATOSHI_CONVERSION).toFixed(6)
+		const decimals = decimalLengths[newTransaction.currency]
+		const amount = (parseFloat(newTransaction.amount.subtotal)/cryptoUnits[newTransaction.currency]).toFixed(decimals)
 
 		if (newTransaction.amount.subtotal && newTransaction.fromId && newTransaction.toId) {
 			let relativeMessage = ''
@@ -340,7 +371,7 @@ exports.notifyTransaction = functions.firestore.document('/transactions/{transac
 			firestore.collection("users").doc(newTransaction.fromId).get().then(doc => {
 				const fromSplashtag = doc.data().splashtag
 				const title = '@' + fromSplashtag
-				const body = 'sent you ' + btcAmount + ' ' + newTransaction.currency + relativeMessage
+				const body = 'sent you ' + amount + ' ' + newTransaction.currency + relativeMessage
 				
 				notify(newTransaction.toId, title, body).then(() => {
 					console.log('notification sent: ', newTransaction.toId, title, body)
@@ -387,16 +418,14 @@ exports.subscribeEmail = functions.https.onRequest((req, res) => {
 			          "url": "https://us19.api.mailchimp.com/3.0/lists/2b780c32c9/members",
 			          "auth": {
 			              username: 'api',
-			              password: functions.config().mailchimp.apikey,
+			              password: "1cc394b4894552564fc24329a214a66e-us19",
 			            },
 			          "data": {
 			              status: 'subscribed',
 			              email_address: req.query.email,
 			            }
 	      }).then(response => {
-	        res.status(200).send(response.data)
-			}).catch(e => {
-		        res.status(400).send(e)
+	        res.status(200).send()
 			})
 		} catch (e) {
 			res.status(400).send(e);
@@ -404,4 +433,29 @@ exports.subscribeEmail = functions.https.onRequest((req, res) => {
 	});
 });
 
+exports.contactUs = functions.https.onRequest((req, res) => {
+	cors(req, res, () => {
+		try {
+		  var data = {
+			  from: req.query.name + ' <' + req.query.email + '>',
+			  to: 'support@splash.tech',
+			  subject: req.query.subject,
+			  text: req.query.text
+			  };
+
+	     mailgun.messages().send(data, function (e, body) {
+	    if (e) {
+	      console.log(e)
+		  res.status(400).send(e);
+	     } else {
+	       res.status(200).send()
+	       console.log(body);
+	     }
+		});
+		} catch(e) {
+	      console.log(e)
+		  res.status(400).send(e);
+		}
+	});
+});
 
