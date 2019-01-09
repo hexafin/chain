@@ -89,12 +89,8 @@ const notify = (toId, title, body) => {
 const validSplashtag = splashtag => {
 	// resolves true is splashtag is valid and unused
 	return new Promise((resolve, reject) => {
-		const now = Math.floor(new Date() / 1000);
-
 		let output = {
 			available: false,
-			availableUser: false,
-			availableWaitlist: false,
 			validSplashtag: false
 		};
 
@@ -108,44 +104,8 @@ const validSplashtag = splashtag => {
 				.get()
 				.then(users => {
 					if (users.empty) {
-						output.availableUser = true;
-
-						firestore
-							.collection("waitlist")
-							.where("splashtag", "==", splashtag)
-							.get()
-							.then(waitlist => {
-								let anyClaimed = false;
-								let anyPending = false;
-
-								if (waitlist.empty) {
-									output.available = true;
-									output.availableWaitlist = true;
-									resolve(output);
-								} else {
-									waitlist.forEach(doc => {
-										const data = doc.data();
-										if (data.claimed == true) {
-											anyClaimed = true;
-										} else if (
-											data.timestamp_expires > now
-										) {
-											anyPending = true;
-										}
-									});
-
-									if (anyPending || anyClaimed) {
-										resolve(output);
-									} else {
-										output.available = true;
-										output.availableWaitlist = true;
-										resolve(output);
-									}
-								}
-							})
-							.catch(error => {
-								reject(error);
-							});
+						output.available = true;
+						resolve(output)
 					} else {
 						resolve(output);
 					}
