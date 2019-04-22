@@ -61,13 +61,14 @@ const slack = (title, subtitle = null, content) => {
 		});
 };
 
-const notify = (toId, title, body) => {
+const notify = (toId, title, body, data={}) => {
 	return new Promise((resolve, reject) => {
 		// the payload is what will be delivered to the device(s)
 		let payload = {
 			notification: {
 				body: ""
-			}
+			},
+			data: data
 		}
 		firestore.collection("users").doc(toId).get().then(doc => {
 			const pushToken = doc.data().pushToken
@@ -417,5 +418,93 @@ exports.contactUs = functions.https.onRequest((req, res) => {
 		  res.status(400).send(e);
 		}
 	});
+});
+
+exports.linkExtension = functions.https.onRequest((req, res) => {
+	if (req.method == "POST") {
+		const phoneNumber = req.body.phoneNumber
+		const extension_uuid = req.body.extension_uuid
+		const pin = (Math.floor(1000 + Math.random() * 9000)).toString();
+
+
+		try {
+		   firestore.collection("users").where("phoneNumber", "==", phoneNumber).get().then(users => {
+		   		if (!users.empty) {
+
+				    users.forEach(user => {
+
+					   	const user_data = user.data()
+
+					   	firestore.collection("users").doc(user.id).update({pin}).then(() => {
+						   	const notification_data = {
+						   		type: 'extension_auth',
+						   		extension_uuid,
+						   		pin
+						   	}
+						   	console.log(user.id, phoneNumber, pin)
+						   	notify(user.id, "", "Link browser extension", notification_data).then(() => {
+						       res.status(200).send()
+						   	}).catch(e => {
+						   	   console.log(e)
+							   res.status(400).send(e);
+						   	})
+					    }).catch(e => {
+					   	   console.log(e)
+						   res.status(400).send(e);
+					    })
+
+				    });		   			
+		   		}
+		   }).catch(e => {
+		   	  console.log(e)
+			  res.status(400).send(e);
+		   })
+		} catch(e) {
+	      console.log(e)
+		  res.status(400).send(e);
+		}
+	}
+});
+
+exports.confirmExtension = functions.https.onRequest((req, res) => {
+	if (req.method == "POST") {
+		const phoneNumber = req.body.phoneNumber
+		const extension_uuid = req.body.extension_uuid
+		const pin = req.body.pin
+		console.log(req.body)
+
+		try {
+		   firestore.collection("users").where("phoneNumber", "==", phoneNumber).get().then(users => {
+		   		if (!users.empty) {
+
+				    users.forEach(user => {
+
+					   	const user_data = user.data()
+					   	console.log(user_data.pin, pin, user_data.pin == pin)
+					   	if (user_data.pin == pin) {
+
+						   	firestore.collection("users").doc(user.id).update({pin: null, extension_uuid}).then(() => {
+						   		return res.status(200)
+							   			.send([user_data.splashtag, user.id])
+						    }).catch(e => {
+						   	   console.log(e)
+							   res.status(400).send(e);
+						    })
+
+					   	} else {
+					   		 res.status(400).send();
+					   	}
+
+				    });		   			
+		   		}
+		   }).catch(e => {
+		   	  console.log(e)
+			  res.status(400).send(e);
+		   })
+		} catch(e) {
+	      console.log(e)
+		  res.status(400).send(e);
+		}
+	}
 });
 
