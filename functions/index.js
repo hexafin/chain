@@ -353,6 +353,7 @@ exports.notifyTransaction = functions.firestore.document('/transactions/{transac
 });
 
 
+// send notification after a transaction has been 'thanked'
 exports.thankTransaction = functions.firestore.document('/transactions/{transactionId}').onUpdate((change, context) => {
 	return new Promise((resolve, reject) => {
 		const oldData = change.before.data()
@@ -371,6 +372,7 @@ exports.thankTransaction = functions.firestore.document('/transactions/{transact
 	})
 })
 
+// add email to mailing list (from website)
 exports.subscribeEmail = functions.https.onRequest((req, res) => {
 	cors(req, res, () => {
 		try {
@@ -394,6 +396,7 @@ exports.subscribeEmail = functions.https.onRequest((req, res) => {
 	});
 });
 
+// send contact us email (from website)
 exports.contactUs = functions.https.onRequest((req, res) => {
 	cors(req, res, () => {
 		try {
@@ -420,6 +423,8 @@ exports.contactUs = functions.https.onRequest((req, res) => {
 	});
 });
 
+// initiate link process between extension and phone
+//  - sends a notification w/ pin to phone to be confirmed
 exports.linkExtension = functions.https.onRequest((req, res) => {
 	if (req.method == "POST") {
 		const phoneNumber = req.body.phoneNumber
@@ -466,6 +471,8 @@ exports.linkExtension = functions.https.onRequest((req, res) => {
 	}
 });
 
+// confirm that a pin matches or doesn't match
+// then add extension_uuid to the user to complete the link
 exports.confirmExtension = functions.https.onRequest((req, res) => {
 	if (req.method == "POST") {
 		const phoneNumber = req.body.phoneNumber
